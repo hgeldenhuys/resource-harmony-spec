@@ -258,43 +258,8 @@ document.getElementById('modal-overlay').addEventListener('click', (e) => {
   if (e.target === e.currentTarget) closeModal();
 });
 
-// ==================== SSE ====================
-let sseRetryDelay = 2000;
-let _lastMutationAt = 0;
-const MUTATION_COOLDOWN = 5000; // Suppress SSE reloads for 5s after local mutation
-function markMutation() { _lastMutationAt = Date.now(); }
-
-function connectSSE() {
-  const sse = new EventSource('/api/sse');
-  sse.addEventListener('change', (e) => {
-    try {
-      const event = JSON.parse(e.data);
-      if (event.table) {
-        // Skip reload if we just made a mutation ourselves (avoids flash)
-        if (Date.now() - _lastMutationAt < MUTATION_COOLDOWN) return;
-        loadAllData(true);
-      }
-    } catch {}
-    sseRetryDelay = 2000;
-  });
-  sse.onopen = () => {
-    sseRetryDelay = 2000;
-    const ind = document.getElementById('sse-indicator');
-    const status = document.getElementById('sse-status');
-    if (ind) { ind.className = 'w-2 h-2 rounded-full bg-emerald-400'; }
-    if (status) { status.textContent = 'Live'; }
-  };
-  sse.onerror = () => {
-    sse.close();
-    const ind = document.getElementById('sse-indicator');
-    const status = document.getElementById('sse-status');
-    if (ind) { ind.className = 'w-2 h-2 rounded-full bg-red-400'; }
-    if (status) { status.textContent = 'Reconnecting...'; }
-    setTimeout(connectSSE, sseRetryDelay);
-    sseRetryDelay = Math.min(sseRetryDelay * 2, 30000);
-  };
-}
-connectSSE();
+// ==================== SSE (disabled) ====================
+function markMutation() {} // no-op
 
 // ==================== HELPERS ====================
 function esc(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
