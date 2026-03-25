@@ -1050,16 +1050,12 @@ function renderPlanning(el) {
                   const cell = (matrix[m.id] || {})[p.id];
                   const val = cell ? cell.planned : 0;
                   const cellColorClass = val > 0 ? (rt.utilization >= 95 ? 'bg-red-50' : rt.utilization >= 85 ? 'bg-amber-50' : 'bg-emerald-50') : '';
-                  return `<td class="px-0 py-0.5 text-center">
-                    <div id="plan-wrap-${m.id}-${p.id}" data-plan-wrap-member="${m.id}" class="flex items-center justify-center gap-0 rounded ${cellColorClass}">
-                      <button onclick="planCellAdjust('${m.id}', '${p.id}', '${selectedMonth}', '${m.name}', '${esc(p.name)}', ${cell ? "'" + cell.id + "'" : 'null'}, -4)"
-                        class="w-5 h-6 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-l text-xs font-bold transition-colors" title="-4h">&minus;</button>
-                      <input type="number" min="0" max="999" value="${val || ''}" placeholder="—"
+                  return `<td class="px-0.5 py-0.5 text-center">
+                    <div id="plan-wrap-${m.id}-${p.id}" data-plan-wrap-member="${m.id}" class="rounded ${cellColorClass}">
+                      <input type="number" min="0" max="999" step="4" value="${val || ''}" placeholder="—"
                         id="plan-cell-${m.id}-${p.id}" data-plan-member="${m.id}"
-                        class="w-12 text-center text-xs px-0 py-1.5 border-0 bg-transparent focus:outline-none focus:ring-0 ${val > 0 ? 'font-medium text-indigo-700' : 'text-slate-400'}"
+                        class="w-14 text-center text-xs px-1 py-1.5 border border-transparent rounded focus:border-indigo-300 focus:outline-none bg-transparent ${val > 0 ? 'font-medium text-indigo-700' : 'text-slate-400'}"
                         onchange="planCellChange('${m.id}', '${p.id}', '${selectedMonth}', '${m.name}', '${esc(p.name)}', ${cell ? "'" + cell.id + "'" : 'null'})">
-                      <button onclick="planCellAdjust('${m.id}', '${p.id}', '${selectedMonth}', '${m.name}', '${esc(p.name)}', ${cell ? "'" + cell.id + "'" : 'null'}, 4)"
-                        class="w-5 h-6 flex items-center justify-center text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-r text-xs font-bold transition-colors" title="+4h">+</button>
                     </div>
                   </td>`;
                 }).join('')}
