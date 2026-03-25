@@ -1,0 +1,1531 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Resource Harmony Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            brand: { 50: '#eef2ff', 100: '#e0e7ff', 200: '#c7d2fe', 300: '#a5b4fc', 400: '#818cf8', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca', 800: '#3730a3', 900: '#312e81' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .sidebar-link { transition: all 0.15s ease; }
+    .sidebar-link:hover, .sidebar-link.active { background: rgba(99, 102, 241, 0.12); color: #a5b4fc; }
+    .sidebar-link.active { border-right: 3px solid #6366f1; }
+    .card { transition: all 0.2s ease; }
+    .card:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .fade-in { animation: fadeIn 0.25s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .gauge-bar { transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+    .toast-enter { animation: toastIn 0.3s ease-out; }
+    .toast-exit { animation: toastOut 0.3s ease-in forwards; }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(100%); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes toastOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(100%); } }
+    .modal-backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    .heatmap-cell { transition: all 0.2s ease; }
+    .heatmap-cell:hover { transform: scale(1.05); z-index: 10; }
+    input[type="number"]::-webkit-inner-spin-button { opacity: 1; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="h-full bg-slate-50 text-slate-800">
+
+<!-- Toast container -->
+<div id="toast-container" class="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-sm"></div>
+
+<!-- Modal container -->
+<div id="modal-overlay" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
+  <div id="modal-content" class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"></div>
+</div>
+
+<!-- App shell -->
+<div class="flex h-full">
+  <!-- Sidebar -->
+  <aside id="sidebar" class="w-64 bg-slate-900 text-slate-300 flex flex-col flex-shrink-0 h-screen sticky top-0">
+    <div class="p-5 border-b border-slate-800">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-600/20">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        </div>
+        <div>
+          <h1 class="text-white font-bold text-sm tracking-tight">Resource Harmony</h1>
+          <p class="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Pro Edition</p>
+        </div>
+      </div>
+    </div>
+    <nav class="flex-1 py-4 px-3 space-y-1">
+      <a href="/" data-route="/" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+        <svg class="w-4.5 h-4.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        Dashboard
+      </a>
+      <a href="/team" data-route="/team" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+        <svg class="w-4.5 h-4.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Team
+      </a>
+      <a href="/projects" data-route="/projects" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+        <svg class="w-4.5 h-4.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+        Projects
+      </a>
+      <a href="/planning" data-route="/planning" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+        <svg class="w-4.5 h-4.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Planning
+      </a>
+      <a href="/actuals" data-route="/actuals" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+        <svg class="w-4.5 h-4.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+        Actuals
+      </a>
+      <a href="/analytics" data-route="/analytics" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+        <svg class="w-4.5 h-4.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Analytics
+      </a>
+      <a href="/settings" data-route="/settings" class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium">
+        <svg class="w-4.5 h-4.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        Settings
+      </a>
+    </nav>
+    <div class="p-4 border-t border-slate-800">
+      <div class="flex items-center gap-2 text-xs text-slate-500">
+        <div id="sse-indicator" class="w-2 h-2 rounded-full bg-slate-600"></div>
+        <span id="sse-status">Connecting...</span>
+      </div>
+      <a href="/__auth/logout" class="mt-3 flex items-center gap-2 text-xs text-slate-500 hover:text-slate-300 transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        Sign Out
+      </a>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="flex-1 overflow-y-auto h-screen">
+    <div id="app" class="p-6 lg:p-8 max-w-7xl mx-auto"></div>
+  </main>
+</div>
+
+<script>
+// ==================== STATE ====================
+const state = {
+  teamMembers: [],
+  projects: [],
+  allocations: [],
+  clients: [],
+  snapshots: [],
+  loading: true,
+  currentRoute: '/',
+  planningMonth: new Date().toISOString().slice(0, 7),
+  actualsMonth: new Date().toISOString().slice(0, 7),
+  projectFilter: 'all',
+};
+
+// ==================== API ====================
+async function api(path, options = {}) {
+  try {
+    const resp = await fetch('/api/' + path, {
+      ...options,
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({ error: 'Request failed' }));
+      const msg = typeof err.error === 'string' ? err.error : err.error?.message || err.message || 'Request failed';
+      throw new Error(msg);
+    }
+    return resp.json();
+  } catch (e) {
+    showToast(e.message, 'error');
+    throw e;
+  }
+}
+
+async function loadAllData(silent = false) {
+  if (!silent) state.loading = true;
+  try {
+    const [members, projects, allocations, clients, snapshots] = await Promise.all([
+      api('team_members?order=name.asc'),
+      api('rh_projects?order=tier.asc,name.asc'),
+      api('allocations?order=period_month.desc,member_name.asc'),
+      api('clients?order=name.asc'),
+      api('monthly_snapshots?order=period.desc'),
+    ]);
+    state.teamMembers = members.data || members || [];
+    state.projects = projects.data || projects || [];
+    state.allocations = allocations.data || allocations || [];
+    state.clients = clients.data || clients || [];
+    state.snapshots = snapshots.data || snapshots || [];
+  } catch (e) {
+    console.error('Failed to load data:', e);
+  }
+  state.loading = false;
+  if (!silent) render();
+  else renderCurrentView();
+}
+
+// ==================== TOAST ====================
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  const colors = {
+    info: 'bg-slate-800 border-slate-700 text-white',
+    success: 'bg-emerald-600 border-emerald-500 text-white',
+    error: 'bg-red-600 border-red-500 text-white',
+    warning: 'bg-amber-500 border-amber-400 text-white',
+  };
+  const icons = {
+    info: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+    success: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+    error: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+    warning: '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>',
+  };
+  toast.className = `toast-enter flex items-center gap-3 px-4 py-3 rounded-xl border shadow-lg text-sm font-medium ${colors[type]}`;
+  toast.innerHTML = `<svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">${icons[type]}</svg><span class="flex-1">${esc(message)}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.classList.remove('toast-enter');
+    toast.classList.add('toast-exit');
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+
+// ==================== MODAL ====================
+function showModal(title, bodyHtml, footerHtml = '') {
+  const overlay = document.getElementById('modal-overlay');
+  const content = document.getElementById('modal-content');
+  content.innerHTML = `
+    <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      <h3 class="text-lg font-semibold text-slate-900">${title}</h3>
+      <button onclick="closeModal()" class="p-1 rounded-lg hover:bg-slate-100 transition-colors">
+        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="px-6 py-4">${bodyHtml}</div>
+    ${footerHtml ? `<div class="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">${footerHtml}</div>` : ''}
+  `;
+  overlay.classList.remove('hidden');
+  overlay.classList.add('flex');
+}
+
+function closeModal() {
+  const overlay = document.getElementById('modal-overlay');
+  overlay.classList.add('hidden');
+  overlay.classList.remove('flex');
+}
+
+function showConfirm(title, message, onConfirm) {
+  showModal(title, `<p class="text-slate-600 text-sm">${message}</p>`,
+    `<button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+     <button id="confirm-btn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">Delete</button>`
+  );
+  document.getElementById('confirm-btn').onclick = () => { closeModal(); onConfirm(); };
+}
+
+// ==================== ROUTER ====================
+function navigate(path) {
+  if (path === state.currentRoute) return;
+  history.pushState(null, '', path);
+  state.currentRoute = path;
+  render();
+}
+
+window.addEventListener('popstate', () => {
+  state.currentRoute = location.pathname;
+  render();
+});
+
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a[data-route]');
+  if (link) {
+    e.preventDefault();
+    navigate(link.getAttribute('data-route') || link.getAttribute('href'));
+  }
+});
+
+// Close modal on backdrop click
+document.getElementById('modal-overlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+// ==================== SSE ====================
+let sseRetryDelay = 2000;
+function connectSSE() {
+  const sse = new EventSource('/api/sse');
+  sse.addEventListener('change', (e) => {
+    try {
+      const event = JSON.parse(e.data);
+      if (event.table) {
+        loadAllData(true);
+        showToast('Real-time update: ' + event.table, 'info');
+      }
+    } catch {}
+    sseRetryDelay = 2000;
+  });
+  sse.onopen = () => {
+    sseRetryDelay = 2000;
+    const ind = document.getElementById('sse-indicator');
+    const status = document.getElementById('sse-status');
+    if (ind) { ind.className = 'w-2 h-2 rounded-full bg-emerald-400'; }
+    if (status) { status.textContent = 'Live'; }
+  };
+  sse.onerror = () => {
+    sse.close();
+    const ind = document.getElementById('sse-indicator');
+    const status = document.getElementById('sse-status');
+    if (ind) { ind.className = 'w-2 h-2 rounded-full bg-red-400'; }
+    if (status) { status.textContent = 'Reconnecting...'; }
+    setTimeout(connectSSE, sseRetryDelay);
+    sseRetryDelay = Math.min(sseRetryDelay * 2, 30000);
+  };
+}
+connectSSE();
+
+// ==================== HELPERS ====================
+function esc(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
+function pct(val, max) { return max > 0 ? Math.round((val / max) * 100) : 0; }
+function fmtNum(n) { return (n || 0).toLocaleString(); }
+function fmtCurrency(n) { return '$' + (n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+function fmtPct(n) { return (n || 0).toFixed(1) + '%'; }
+function initials(name) {
+  if (!name) return '??';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return parts[0].slice(0, 2).toUpperCase();
+}
+function stabilityBadge(stability) {
+  const s = (stability || '').toUpperCase();
+  if (s === 'STABLE') return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-700">STABLE</span>';
+  if (s === 'MODERATE') return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700">MODERATE</span>';
+  if (s === 'VOLATILE') return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">VOLATILE</span>';
+  return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">' + esc(s || 'N/A') + '</span>';
+}
+function tierBadge(tier) {
+  const t = parseInt(tier) || 0;
+  if (t === 1) return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-700">Tier 1</span>';
+  if (t === 2) return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700">Tier 2</span>';
+  if (t === 3) return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">Tier 3</span>';
+  return '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">Tier ' + t + '</span>';
+}
+function utilizationColor(pct) {
+  if (pct >= 95) return 'bg-red-500';
+  if (pct >= 85) return 'bg-amber-500';
+  if (pct >= 70) return 'bg-emerald-500';
+  if (pct >= 50) return 'bg-blue-500';
+  return 'bg-slate-300';
+}
+function utilizationTextColor(pct) {
+  if (pct >= 95) return 'text-red-600';
+  if (pct >= 85) return 'text-amber-600';
+  if (pct >= 70) return 'text-emerald-600';
+  return 'text-slate-500';
+}
+const avatarColors = [
+  'from-indigo-500 to-purple-500', 'from-emerald-500 to-teal-500', 'from-amber-500 to-orange-500',
+  'from-pink-500 to-rose-500', 'from-cyan-500 to-blue-500', 'from-violet-500 to-fuchsia-500',
+  'from-lime-500 to-green-500', 'from-red-500 to-pink-500',
+];
+function avatarGradient(name) {
+  let hash = 0;
+  for (let i = 0; i < (name || '').length; i++) hash = ((hash << 5) - hash) + name.charCodeAt(i);
+  return avatarColors[Math.abs(hash) % avatarColors.length];
+}
+function getMonths() {
+  const months = new Set();
+  for (let i = 0; i < state.allocations.length; i++) {
+    if (state.allocations[i].period_month) months.add(state.allocations[i].period_month);
+  }
+  return Array.from(months).sort().reverse();
+}
+
+// ==================== RENDER ====================
+function render() {
+  state.currentRoute = location.pathname;
+  // Update sidebar active state
+  const links = document.querySelectorAll('[data-route]');
+  for (let i = 0; i < links.length; i++) {
+    const r = links[i].getAttribute('data-route');
+    if (r === state.currentRoute || (state.currentRoute === '/' && r === '/')) {
+      links[i].classList.add('active');
+    } else {
+      links[i].classList.remove('active');
+    }
+  }
+  renderCurrentView();
+}
+
+function renderCurrentView() {
+  const app = document.getElementById('app');
+  if (state.loading) {
+    app.innerHTML = `<div class="flex items-center justify-center h-64"><div class="text-slate-400 text-sm">Loading data...</div></div>`;
+    return;
+  }
+  const route = state.currentRoute;
+  if (route === '/') renderDashboard(app);
+  else if (route === '/team') renderTeam(app);
+  else if (route === '/projects') renderProjects(app);
+  else if (route === '/planning') renderPlanning(app);
+  else if (route === '/actuals') renderActuals(app);
+  else if (route === '/analytics') renderAnalytics(app);
+  else if (route === '/settings') renderSettings(app);
+  else renderDashboard(app);
+}
+
+// ==================== DASHBOARD ====================
+function renderDashboard(el) {
+  const members = state.teamMembers;
+  const projects = state.projects;
+  const allocs = state.allocations;
+  const snaps = state.snapshots;
+
+  const totalCapacity = members.reduce((s, m) => s + (parseFloat(m.monthly_capacity) || 0), 0);
+  const totalPlanned = allocs.reduce((s, a) => s + (parseFloat(a.planned_hours) || 0), 0);
+  const totalActual = allocs.reduce((s, a) => s + (parseFloat(a.actual_hours) || 0), 0);
+  const utilPct = totalCapacity > 0 ? (totalPlanned / totalCapacity * 100) : 0;
+  const latestSnap = snaps.length > 0 ? snaps[0] : {};
+  const revenue = parseFloat(latestSnap.planned_revenue) || 0;
+
+  // Team utilization per member
+  const memberUtils = [];
+  for (let i = 0; i < members.length; i++) {
+    const m = members[i];
+    let planned = 0;
+    for (let j = 0; j < allocs.length; j++) {
+      if (allocs[j].member_id === m.id || allocs[j].member_name === m.name) {
+        planned += parseFloat(allocs[j].planned_hours) || 0;
+      }
+    }
+    const cap = parseFloat(m.monthly_capacity) || 160;
+    const uPct = cap > 0 ? (planned / cap * 100) : 0;
+    memberUtils.push({ name: m.name, planned, capacity: cap, utilization: uPct, isAtCapacity: m.is_at_capacity, stability: m.stability_score });
+  }
+
+  // Project tier distribution
+  let tier1 = 0, tier2 = 0, tier3 = 0;
+  for (let i = 0; i < projects.length; i++) {
+    const t = parseInt(projects[i].tier) || 0;
+    if (t === 1) tier1++;
+    else if (t === 2) tier2++;
+    else tier3++;
+  }
+
+  // Stability distribution
+  let stableCount = 0, moderateCount = 0, volatileCount = 0;
+  for (let i = 0; i < members.length; i++) {
+    const s = (members[i].stability_score || '').toUpperCase();
+    if (s === 'STABLE') stableCount++;
+    else if (s === 'MODERATE') moderateCount++;
+    else volatileCount++;
+  }
+
+  el.innerHTML = `<div class="fade-in">
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-slate-900">Executive Dashboard</h2>
+      <p class="text-sm text-slate-500 mt-1">Real-time resource management overview</p>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      <div class="card bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Team Size</span>
+          <div class="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center">
+            <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold text-slate-900">${members.length}</div>
+        <div class="text-xs text-slate-400 mt-1">${fmtNum(totalCapacity)} hrs capacity</div>
+      </div>
+      <div class="card bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Planned Hours</span>
+          <div class="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold text-slate-900">${fmtNum(totalPlanned)}</div>
+        <div class="text-xs text-slate-400 mt-1">across ${projects.length} projects</div>
+      </div>
+      <div class="card bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Actual Hours</span>
+          <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+            <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold text-slate-900">${fmtNum(totalActual)}</div>
+        <div class="text-xs ${totalActual > totalPlanned ? 'text-red-500' : 'text-slate-400'} mt-1">${totalActual > totalPlanned ? '+' : ''}${fmtNum(totalActual - totalPlanned)} variance</div>
+      </div>
+      <div class="card bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Utilization</span>
+          <div class="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+            <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold ${utilizationTextColor(utilPct)}">${fmtPct(utilPct)}</div>
+        <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2"><div class="h-1.5 rounded-full gauge-bar ${utilizationColor(utilPct)}" style="width: ${Math.min(utilPct, 100)}%"></div></div>
+      </div>
+      <div class="card bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">Revenue</span>
+          <div class="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
+            <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold text-slate-900">${fmtCurrency(revenue)}</div>
+        <div class="text-xs text-slate-400 mt-1">planned revenue</div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+      <!-- Team Utilization Heatmap -->
+      <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="font-semibold text-slate-900 text-sm">Team Utilization</h3>
+        </div>
+        <div class="p-5 space-y-3">
+          ${memberUtils.map(m => `
+            <div class="flex items-center gap-3 heatmap-cell rounded-lg p-2 -mx-2">
+              <div class="w-24 text-xs font-medium text-slate-700 truncate">${esc(m.name.split(' ')[0])}</div>
+              <div class="flex-1 bg-slate-100 rounded-full h-5 relative overflow-hidden">
+                <div class="h-full rounded-full gauge-bar ${utilizationColor(m.utilization)} opacity-90" style="width: ${Math.min(m.utilization, 100)}%"></div>
+                <div class="absolute inset-0 flex items-center justify-center text-[10px] font-bold ${m.utilization > 50 ? 'text-white' : 'text-slate-600'}">${fmtPct(m.utilization)}</div>
+              </div>
+              <div class="w-16 text-right">
+                ${m.isAtCapacity ? '<span class="text-[10px] font-bold text-red-500 uppercase">At Cap</span>' : '<span class="text-[10px] text-slate-400">' + fmtNum(m.planned) + 'h</span>'}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Right Column -->
+      <div class="space-y-6">
+        <!-- Stability Overview -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div class="px-5 py-4 border-b border-slate-100">
+            <h3 class="font-semibold text-slate-900 text-sm">Team Stability</h3>
+          </div>
+          <div class="p-5 space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full bg-emerald-400"></div>
+                <span class="text-sm text-slate-600">Stable</span>
+              </div>
+              <span class="text-sm font-semibold text-slate-900">${stableCount}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full bg-amber-400"></div>
+                <span class="text-sm text-slate-600">Moderate</span>
+              </div>
+              <span class="text-sm font-semibold text-slate-900">${moderateCount}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full bg-red-400"></div>
+                <span class="text-sm text-slate-600">Volatile</span>
+              </div>
+              <span class="text-sm font-semibold text-slate-900">${volatileCount}</span>
+            </div>
+            <div class="bg-slate-50 rounded-lg h-3 flex overflow-hidden">
+              <div class="bg-emerald-400 h-full" style="width: ${pct(stableCount, members.length)}%"></div>
+              <div class="bg-amber-400 h-full" style="width: ${pct(moderateCount, members.length)}%"></div>
+              <div class="bg-red-400 h-full" style="width: ${pct(volatileCount, members.length)}%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Project Tiers -->
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+          <div class="px-5 py-4 border-b border-slate-100">
+            <h3 class="font-semibold text-slate-900 text-sm">Project Tiers</h3>
+          </div>
+          <div class="p-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                ${tierBadge(1)}
+                <span class="text-sm text-slate-600">Strategic</span>
+              </div>
+              <span class="text-sm font-semibold text-slate-900">${tier1}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                ${tierBadge(2)}
+                <span class="text-sm text-slate-600">Active</span>
+              </div>
+              <span class="text-sm font-semibold text-slate-900">${tier2}</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                ${tierBadge(3)}
+                <span class="text-sm text-slate-600">Support</span>
+              </div>
+              <span class="text-sm font-semibold text-slate-900">${tier3}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly Snapshots Table -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div class="px-5 py-4 border-b border-slate-100">
+        <h3 class="font-semibold text-slate-900 text-sm">Monthly Trends</h3>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-slate-100 text-left">
+              <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Period</th>
+              <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Capacity</th>
+              <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Planned</th>
+              <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actual</th>
+              <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Utilization</th>
+              <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Revenue</th>
+              <th class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Headcount</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${snaps.slice(0, 7).map(s => `
+              <tr class="border-b border-slate-50 hover:bg-slate-50/50">
+                <td class="px-5 py-3 font-medium text-slate-900">${esc(s.period)}</td>
+                <td class="px-5 py-3 text-right text-slate-600">${fmtNum(parseFloat(s.total_capacity))}</td>
+                <td class="px-5 py-3 text-right text-slate-600">${fmtNum(parseFloat(s.total_planned))}</td>
+                <td class="px-5 py-3 text-right text-slate-600">${fmtNum(parseFloat(s.total_actual))}</td>
+                <td class="px-5 py-3 text-right font-semibold ${utilizationTextColor(parseFloat(s.company_utilization))}">${fmtPct(parseFloat(s.company_utilization))}</td>
+                <td class="px-5 py-3 text-right text-slate-600">${fmtCurrency(parseFloat(s.planned_revenue))}</td>
+                <td class="px-5 py-3 text-right text-slate-600">${s.headcount || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ==================== TEAM ====================
+function renderTeam(el) {
+  const members = state.teamMembers;
+  // Compute per-member stats
+  const memberStats = [];
+  for (let i = 0; i < members.length; i++) {
+    const m = members[i];
+    let planned = 0;
+    const projectMap = {};
+    for (let j = 0; j < state.allocations.length; j++) {
+      const a = state.allocations[j];
+      if (a.member_id === m.id || a.member_name === m.name) {
+        planned += parseFloat(a.planned_hours) || 0;
+        if (a.project_name) {
+          projectMap[a.project_name] = (projectMap[a.project_name] || 0) + (parseFloat(a.planned_hours) || 0);
+        }
+      }
+    }
+    const cap = parseFloat(m.monthly_capacity) || 160;
+    memberStats.push({ ...m, totalPlanned: planned, capacity: cap, utilization: cap > 0 ? (planned / cap * 100) : 0, projectBreakdown: projectMap });
+  }
+
+  // Risk: single points of failure (only 1 person on a project)
+  const projectMemberCounts = {};
+  for (let i = 0; i < state.allocations.length; i++) {
+    const a = state.allocations[i];
+    if (!projectMemberCounts[a.project_name]) projectMemberCounts[a.project_name] = new Set();
+    if (a.member_name) projectMemberCounts[a.project_name].add(a.member_name);
+  }
+  const spofProjects = [];
+  const keys = Object.keys(projectMemberCounts);
+  for (let i = 0; i < keys.length; i++) {
+    if (projectMemberCounts[keys[i]].size === 1) {
+      spofProjects.push({ project: keys[i], member: Array.from(projectMemberCounts[keys[i]])[0] });
+    }
+  }
+
+  el.innerHTML = `<div class="fade-in">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900">Team Management</h2>
+        <p class="text-sm text-slate-500 mt-1">${members.length} team members</p>
+      </div>
+      <button onclick="showAddMemberModal()" class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl transition-colors shadow-sm shadow-indigo-600/20">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        Add Member
+      </button>
+    </div>
+
+    ${spofProjects.length > 0 ? `
+    <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+      <svg class="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+      <div>
+        <p class="text-sm font-semibold text-amber-800">Single Points of Failure Detected</p>
+        <p class="text-xs text-amber-700 mt-1">${spofProjects.map(s => `<strong>${esc(s.member)}</strong> is the sole resource on <em>${esc(s.project)}</em>`).join(' &bull; ')}</p>
+      </div>
+    </div>` : ''}
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+      ${memberStats.map(m => {
+        const projEntries = Object.entries(m.projectBreakdown).sort((a, b) => b[1] - a[1]);
+        return `
+        <div class="card bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <div class="flex items-start justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${avatarGradient(m.name)} flex items-center justify-center text-white font-bold text-xs shadow-sm">${initials(m.name)}</div>
+              <div>
+                <h4 class="font-semibold text-slate-900 text-sm">${esc(m.name)}</h4>
+                <p class="text-xs text-slate-500">${esc(m.role || 'Team Member')}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-1">
+              <button onclick="showEditMemberModal('${m.id}')" class="p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="Edit">
+                <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+              </button>
+              <button onclick="deleteMember('${m.id}', '${esc(m.name)}')" class="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete">
+                <svg class="w-3.5 h-3.5 text-slate-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 mb-3">
+            ${stabilityBadge(m.stability_score)}
+            ${m.cv_percentage ? `<span class="text-[10px] text-slate-500">CV: ${parseFloat(m.cv_percentage).toFixed(1)}%</span>` : ''}
+            ${m.is_at_capacity ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-100 text-red-700">AT CAPACITY</span>' : ''}
+          </div>
+          <div class="mb-3">
+            <div class="flex items-center justify-between text-xs mb-1">
+              <span class="text-slate-500">Utilization</span>
+              <span class="font-semibold ${utilizationTextColor(m.utilization)}">${fmtPct(m.utilization)}</span>
+            </div>
+            <div class="w-full bg-slate-100 rounded-full h-2">
+              <div class="h-2 rounded-full gauge-bar ${utilizationColor(m.utilization)}" style="width: ${Math.min(m.utilization, 100)}%"></div>
+            </div>
+            <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+              <span>${fmtNum(m.totalPlanned)}h planned</span>
+              <span>${fmtNum(m.capacity)}h capacity</span>
+            </div>
+          </div>
+          ${projEntries.length > 0 ? `
+          <div class="border-t border-slate-100 pt-3 mt-3">
+            <p class="text-[10px] font-medium text-slate-500 uppercase tracking-wider mb-2">Projects</p>
+            <div class="space-y-1.5">
+              ${projEntries.slice(0, 4).map(([pname, hrs]) => `
+                <div class="flex items-center justify-between">
+                  <span class="text-xs text-slate-600 truncate mr-2">${esc(pname)}</span>
+                  <span class="text-xs font-medium text-slate-900">${fmtNum(hrs)}h</span>
+                </div>
+              `).join('')}
+              ${projEntries.length > 4 ? `<span class="text-[10px] text-slate-400">+${projEntries.length - 4} more</span>` : ''}
+            </div>
+          </div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function memberFormHtml(member) {
+  const m = member || {};
+  return `
+    <div class="space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Name *</label>
+          <input id="mf-name" type="text" value="${esc(m.name || '')}" required class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Email *</label>
+          <input id="mf-email" type="email" value="${esc(m.email || '')}" required class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Role</label>
+          <input id="mf-role" type="text" value="${esc(m.role || '')}" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Department</label>
+          <input id="mf-department" type="text" value="${esc(m.department || '')}" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Monthly Capacity (hrs)</label>
+          <input id="mf-capacity" type="number" value="${m.monthly_capacity || 160}" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Hourly Rate ($)</label>
+          <input id="mf-rate" type="number" value="${m.hourly_rate || 0}" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Stability</label>
+          <select id="mf-stability" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+            <option value="STABLE" ${(m.stability_score || '').toUpperCase() === 'STABLE' ? 'selected' : ''}>Stable</option>
+            <option value="MODERATE" ${(m.stability_score || '').toUpperCase() === 'MODERATE' ? 'selected' : ''}>Moderate</option>
+            <option value="VOLATILE" ${(m.stability_score || '').toUpperCase() === 'VOLATILE' ? 'selected' : ''}>Volatile</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Util Min %</label>
+          <input id="mf-util-min" type="number" value="${m.utilization_target_min || 70}" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Util Max %</label>
+          <input id="mf-util-max" type="number" value="${m.utilization_target_max || 90}" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+        </div>
+      </div>
+    </div>`;
+}
+
+function showAddMemberModal() {
+  showModal('Add Team Member', memberFormHtml(),
+    `<button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+     <button onclick="saveMember()" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">Add Member</button>`
+  );
+}
+
+function showEditMemberModal(id) {
+  let member = null;
+  for (let i = 0; i < state.teamMembers.length; i++) {
+    if (state.teamMembers[i].id === id) { member = state.teamMembers[i]; break; }
+  }
+  if (!member) return;
+  showModal('Edit Team Member', memberFormHtml(member),
+    `<button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+     <button onclick="saveMember('${id}')" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">Save Changes</button>`
+  );
+}
+
+async function saveMember(id) {
+  const data = {
+    name: document.getElementById('mf-name').value,
+    email: document.getElementById('mf-email').value,
+    role: document.getElementById('mf-role').value,
+    department: document.getElementById('mf-department').value,
+    monthly_capacity: parseInt(document.getElementById('mf-capacity').value) || 160,
+    hourly_rate: parseFloat(document.getElementById('mf-rate').value) || 0,
+    stability_score: document.getElementById('mf-stability').value,
+    utilization_target_min: parseInt(document.getElementById('mf-util-min').value) || 70,
+    utilization_target_max: parseInt(document.getElementById('mf-util-max').value) || 90,
+    is_active: true,
+  };
+  if (!data.name || !data.email) { showToast('Name and email are required', 'warning'); return; }
+  try {
+    if (id) {
+      await api('team_members/' + id, { method: 'PUT', body: JSON.stringify(data) });
+      showToast('Member updated successfully', 'success');
+    } else {
+      await api('team_members', { method: 'POST', body: JSON.stringify(data) });
+      showToast('Member added successfully', 'success');
+    }
+    closeModal();
+    await loadAllData(true);
+  } catch {}
+}
+
+function deleteMember(id, name) {
+  showConfirm('Delete Team Member', `Are you sure you want to delete <strong>${name}</strong>? This action cannot be undone.`, async () => {
+    try {
+      await api('team_members/' + id, { method: 'DELETE' });
+      showToast('Member deleted', 'success');
+      await loadAllData(true);
+    } catch {}
+  });
+}
+
+// ==================== PROJECTS ====================
+function renderProjects(el) {
+  const projects = state.projects;
+  const filter = state.projectFilter;
+
+  let filtered = projects;
+  if (filter !== 'all') {
+    filtered = [];
+    for (let i = 0; i < projects.length; i++) {
+      if (String(projects[i].tier) === filter) filtered.push(projects[i]);
+    }
+  }
+
+  // Group by tier
+  const tiers = { 1: [], 2: [], 3: [] };
+  for (let i = 0; i < filtered.length; i++) {
+    const t = parseInt(filtered[i].tier) || 3;
+    if (!tiers[t]) tiers[t] = [];
+    tiers[t].push(filtered[i]);
+  }
+
+  const tierLabels = { 1: 'Tier 1: Strategic', 2: 'Tier 2: Active', 3: 'Tier 3: Support' };
+  const tierColors = { 1: 'border-l-indigo-500', 2: 'border-l-blue-500', 3: 'border-l-slate-400' };
+
+  // Count members per project
+  const projMembers = {};
+  for (let i = 0; i < state.allocations.length; i++) {
+    const a = state.allocations[i];
+    if (!projMembers[a.project_id]) projMembers[a.project_id] = new Set();
+    if (a.member_name) projMembers[a.project_id].add(a.member_name);
+  }
+
+  el.innerHTML = `<div class="fade-in">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900">Project Portfolio</h2>
+        <p class="text-sm text-slate-500 mt-1">${projects.length} projects across ${Object.keys(tierLabels).length} tiers</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="state.projectFilter='all'; renderCurrentView()" class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${filter === 'all' ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}">All</button>
+        <button onclick="state.projectFilter='1'; renderCurrentView()" class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${filter === '1' ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}">Tier 1</button>
+        <button onclick="state.projectFilter='2'; renderCurrentView()" class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${filter === '2' ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}">Tier 2</button>
+        <button onclick="state.projectFilter='3'; renderCurrentView()" class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${filter === '3' ? 'bg-indigo-600 text-white' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}">Tier 3</button>
+      </div>
+    </div>
+
+    ${[1, 2, 3].map(tier => {
+      const items = tiers[tier] || [];
+      if (items.length === 0) return '';
+      return `
+      <div class="mb-8">
+        <h3 class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4">${tierLabels[tier]}</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          ${items.map(p => {
+            const members = projMembers[p.id] ? projMembers[p.id].size : 0;
+            const budgetUsed = p.total_hours_5m && p.budget_hours ? pct(parseFloat(p.total_hours_5m), parseFloat(p.budget_hours)) : 0;
+            return `
+            <div class="card bg-white rounded-xl border border-slate-200 border-l-4 ${tierColors[tier]} shadow-sm p-5">
+              <div class="flex items-start justify-between mb-3">
+                <div class="flex items-center gap-2">
+                  <div class="w-3 h-3 rounded-full" style="background-color: ${p.color || '#6366f1'}"></div>
+                  <h4 class="font-semibold text-slate-900 text-sm">${esc(p.name)}</h4>
+                </div>
+                ${tierBadge(p.tier)}
+              </div>
+              <p class="text-xs text-slate-500 mb-3">${esc(p.client_name || 'No client')}</p>
+              <div class="flex items-center gap-2 mb-3 flex-wrap">
+                ${stabilityBadge(p.stability)}
+                ${p.cv_percentage ? `<span class="text-[10px] text-slate-500">CV: ${parseFloat(p.cv_percentage).toFixed(1)}%</span>` : ''}
+                <span class="text-[10px] text-slate-500">${members} team member${members !== 1 ? 's' : ''}</span>
+              </div>
+              ${p.budget_hours ? `
+              <div class="mb-2">
+                <div class="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+                  <span>Budget</span>
+                  <span>${fmtNum(parseFloat(p.total_hours_5m || 0))} / ${fmtNum(parseFloat(p.budget_hours))} hrs</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-1.5">
+                  <div class="h-1.5 rounded-full gauge-bar ${budgetUsed > 90 ? 'bg-red-500' : budgetUsed > 70 ? 'bg-amber-500' : 'bg-emerald-500'}" style="width: ${Math.min(budgetUsed, 100)}%"></div>
+                </div>
+              </div>` : ''}
+              ${p.start_date || p.end_date ? `<p class="text-[10px] text-slate-400">${esc(p.start_date || '')} — ${esc(p.end_date || 'Ongoing')}</p>` : ''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ==================== PLANNING ====================
+function renderPlanning(el) {
+  const months = getMonths();
+  const selectedMonth = state.planningMonth;
+  const members = state.teamMembers;
+  const projects = state.projects;
+
+  // Filter allocations for selected month
+  const monthAllocs = [];
+  for (let i = 0; i < state.allocations.length; i++) {
+    if (state.allocations[i].period_month === selectedMonth) monthAllocs.push(state.allocations[i]);
+  }
+
+  // Build matrix: member -> project -> planned_hours
+  const matrix = {};
+  for (let i = 0; i < members.length; i++) matrix[members[i].id] = {};
+  for (let i = 0; i < monthAllocs.length; i++) {
+    const a = monthAllocs[i];
+    if (matrix[a.member_id]) {
+      matrix[a.member_id][a.project_id] = { planned: parseFloat(a.planned_hours) || 0, id: a.id };
+    }
+  }
+
+  // Compute row totals
+  const rowTotals = {};
+  for (let i = 0; i < members.length; i++) {
+    const m = members[i];
+    let total = 0;
+    const projKeys = Object.keys(matrix[m.id] || {});
+    for (let j = 0; j < projKeys.length; j++) total += matrix[m.id][projKeys[j]].planned;
+    const cap = parseFloat(m.monthly_capacity) || 160;
+    rowTotals[m.id] = { planned: total, capacity: cap, variance: cap - total, utilization: cap > 0 ? (total / cap * 100) : 0 };
+  }
+
+  el.innerHTML = `<div class="fade-in">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900">Monthly Planning</h2>
+        <p class="text-sm text-slate-500 mt-1">Allocate planned hours by team member and project</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <select id="planning-month" onchange="state.planningMonth = this.value; renderCurrentView()" class="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30">
+          ${months.map(m => `<option value="${m}" ${m === selectedMonth ? 'selected' : ''}>${m}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-slate-200 bg-slate-50/50">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider sticky left-0 bg-slate-50/50 z-10 min-w-[160px]">Team Member</th>
+              ${projects.map(p => `<th class="px-3 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[90px]"><div class="flex items-center justify-center gap-1"><div class="w-2 h-2 rounded-full" style="background: ${p.color || '#6366f1'}"></div><span class="truncate">${esc((p.name || '').length > 12 ? p.name.slice(0, 12) + '..' : p.name)}</span></div></th>`).join('')}
+              <th class="px-3 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-100/80">Planned</th>
+              <th class="px-3 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-100/80">Capacity</th>
+              <th class="px-3 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-100/80">Variance</th>
+              <th class="px-3 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-100/80">Util %</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${members.map(m => {
+              const rt = rowTotals[m.id];
+              const utilClass = rt.utilization >= 95 ? 'text-red-600 font-bold' : rt.utilization >= 85 ? 'text-amber-600 font-semibold' : rt.utilization >= 70 ? 'text-emerald-600' : 'text-slate-500';
+              const rowBg = rt.utilization >= 95 ? 'bg-red-50/30' : '';
+              return `
+              <tr class="border-b border-slate-50 hover:bg-slate-50/50 ${rowBg}">
+                <td class="px-4 py-2.5 sticky left-0 bg-white z-10">
+                  <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-gradient-to-br ${avatarGradient(m.name)} flex items-center justify-center text-white font-bold text-[10px]">${initials(m.name)}</div>
+                    <span class="text-sm font-medium text-slate-800">${esc(m.name.split(' ')[0])}</span>
+                  </div>
+                </td>
+                ${projects.map(p => {
+                  const cell = (matrix[m.id] || {})[p.id];
+                  const val = cell ? cell.planned : 0;
+                  return `<td class="px-1 py-1 text-center">
+                    <input type="number" min="0" max="999" value="${val || ''}" placeholder="—"
+                      class="w-full text-center text-xs px-1 py-1.5 rounded border border-transparent hover:border-slate-200 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400/30 transition-colors ${val > 0 ? 'bg-indigo-50/50 font-medium text-indigo-700' : 'text-slate-400'}"
+                      onchange="updateAllocation('${m.id}', '${p.id}', '${selectedMonth}', this.value, '${m.name}', '${esc(p.name)}'${cell ? ", '" + cell.id + "'" : ''})">
+                  </td>`;
+                }).join('')}
+                <td class="px-3 py-2.5 text-center font-semibold text-slate-900 bg-slate-50/50">${fmtNum(rt.planned)}</td>
+                <td class="px-3 py-2.5 text-center text-slate-600 bg-slate-50/50">${fmtNum(rt.capacity)}</td>
+                <td class="px-3 py-2.5 text-center ${rt.variance < 0 ? 'text-red-600 font-semibold' : 'text-emerald-600'} bg-slate-50/50">${rt.variance > 0 ? '+' : ''}${fmtNum(rt.variance)}</td>
+                <td class="px-3 py-2.5 text-center ${utilClass} bg-slate-50/50">${fmtPct(rt.utilization)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function updateAllocation(memberId, projectId, month, value, memberName, projectName, existingId) {
+  const hours = parseFloat(value) || 0;
+  try {
+    if (existingId && hours > 0) {
+      await api('allocations/' + existingId, { method: 'PUT', body: JSON.stringify({ planned_hours: hours }) });
+    } else if (existingId && hours === 0) {
+      await api('allocations/' + existingId, { method: 'DELETE' });
+    } else if (hours > 0) {
+      await api('allocations', { method: 'POST', body: JSON.stringify({
+        member_id: memberId, project_id: projectId, period_month: month,
+        planned_hours: hours, actual_hours: 0, member_name: memberName, project_name: projectName,
+      })});
+    }
+    showToast('Allocation updated', 'success');
+    await loadAllData(true);
+  } catch {}
+}
+
+// ==================== ACTUALS ====================
+function renderActuals(el) {
+  const months = getMonths();
+  const selectedMonth = state.actualsMonth;
+  const members = state.teamMembers;
+  const projects = state.projects;
+
+  const monthAllocs = [];
+  for (let i = 0; i < state.allocations.length; i++) {
+    if (state.allocations[i].period_month === selectedMonth) monthAllocs.push(state.allocations[i]);
+  }
+
+  const matrix = {};
+  for (let i = 0; i < members.length; i++) matrix[members[i].id] = {};
+  for (let i = 0; i < monthAllocs.length; i++) {
+    const a = monthAllocs[i];
+    if (matrix[a.member_id]) {
+      matrix[a.member_id][a.project_id] = { actual: parseFloat(a.actual_hours) || 0, planned: parseFloat(a.planned_hours) || 0, id: a.id };
+    }
+  }
+
+  const rowTotals = {};
+  for (let i = 0; i < members.length; i++) {
+    const m = members[i];
+    let totalActual = 0, totalPlanned = 0;
+    const projKeys = Object.keys(matrix[m.id] || {});
+    for (let j = 0; j < projKeys.length; j++) {
+      totalActual += matrix[m.id][projKeys[j]].actual;
+      totalPlanned += matrix[m.id][projKeys[j]].planned;
+    }
+    rowTotals[m.id] = { actual: totalActual, planned: totalPlanned, variance: totalActual - totalPlanned };
+  }
+
+  el.innerHTML = `<div class="fade-in">
+    <div class="flex items-center justify-between mb-6">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-900">Actuals Tracking</h2>
+        <p class="text-sm text-slate-500 mt-1">Record actual hours spent by team and project</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button onclick="showToast('Harvest integration coming soon', 'info')" class="inline-flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+          Import from Harvest
+        </button>
+        <select id="actuals-month" onchange="state.actualsMonth = this.value; renderCurrentView()" class="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30">
+          ${months.map(m => `<option value="${m}" ${m === selectedMonth ? 'selected' : ''}>${m}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-slate-200 bg-slate-50/50">
+              <th class="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider sticky left-0 bg-slate-50/50 z-10 min-w-[160px]">Team Member</th>
+              ${projects.map(p => `<th class="px-3 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider min-w-[90px]"><div class="flex items-center justify-center gap-1"><div class="w-2 h-2 rounded-full" style="background: ${p.color || '#6366f1'}"></div><span class="truncate">${esc((p.name || '').length > 12 ? p.name.slice(0, 12) + '..' : p.name)}</span></div></th>`).join('')}
+              <th class="px-3 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-100/80">Actual</th>
+              <th class="px-3 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-100/80">Planned</th>
+              <th class="px-3 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-100/80">Variance</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${members.map(m => {
+              const rt = rowTotals[m.id];
+              const varianceClass = rt.variance > 0 ? 'text-red-600 font-semibold' : rt.variance < 0 ? 'text-emerald-600' : 'text-slate-500';
+              return `
+              <tr class="border-b border-slate-50 hover:bg-slate-50/50">
+                <td class="px-4 py-2.5 sticky left-0 bg-white z-10">
+                  <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-gradient-to-br ${avatarGradient(m.name)} flex items-center justify-center text-white font-bold text-[10px]">${initials(m.name)}</div>
+                    <span class="text-sm font-medium text-slate-800">${esc(m.name.split(' ')[0])}</span>
+                  </div>
+                </td>
+                ${projects.map(p => {
+                  const cell = (matrix[m.id] || {})[p.id];
+                  const val = cell ? cell.actual : 0;
+                  const planned = cell ? cell.planned : 0;
+                  const diff = val - planned;
+                  const cellBg = cell && diff > 0 ? 'bg-red-50/50' : cell && diff < -10 ? 'bg-emerald-50/50' : '';
+                  return `<td class="px-1 py-1 text-center ${cellBg}">
+                    ${cell ? `<input type="number" min="0" max="999" value="${val || ''}" placeholder="—"
+                      class="w-full text-center text-xs px-1 py-1.5 rounded border border-transparent hover:border-slate-200 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400/30 transition-colors ${val > 0 ? 'font-medium text-slate-700' : 'text-slate-400'}"
+                      onchange="updateActual('${cell.id}', this.value)">` : '<span class="text-xs text-slate-300">—</span>'}
+                  </td>`;
+                }).join('')}
+                <td class="px-3 py-2.5 text-center font-semibold text-slate-900 bg-slate-50/50">${fmtNum(rt.actual)}</td>
+                <td class="px-3 py-2.5 text-center text-slate-600 bg-slate-50/50">${fmtNum(rt.planned)}</td>
+                <td class="px-3 py-2.5 text-center ${varianceClass} bg-slate-50/50">${rt.variance > 0 ? '+' : ''}${fmtNum(rt.variance)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function updateActual(allocId, value) {
+  const hours = parseFloat(value) || 0;
+  try {
+    await api('allocations/' + allocId, { method: 'PUT', body: JSON.stringify({ actual_hours: hours }) });
+    showToast('Actual hours updated', 'success');
+    await loadAllData(true);
+  } catch {}
+}
+
+// ==================== ANALYTICS ====================
+function renderAnalytics(el) {
+  const snaps = state.snapshots.slice().reverse();
+  const members = state.teamMembers;
+  const projects = state.projects;
+  const allocs = state.allocations;
+
+  // Max values for scaling
+  let maxCapacity = 0;
+  for (let i = 0; i < snaps.length; i++) {
+    const c = parseFloat(snaps[i].total_capacity) || 0;
+    if (c > maxCapacity) maxCapacity = c;
+  }
+  let maxRevenue = 0;
+  for (let i = 0; i < snaps.length; i++) {
+    const r = Math.max(parseFloat(snaps[i].planned_revenue) || 0, parseFloat(snaps[i].actual_revenue) || 0);
+    if (r > maxRevenue) maxRevenue = r;
+  }
+
+  // Project hours distribution
+  const projHours = {};
+  for (let i = 0; i < allocs.length; i++) {
+    const a = allocs[i];
+    projHours[a.project_name] = (projHours[a.project_name] || 0) + (parseFloat(a.planned_hours) || 0);
+  }
+  const projEntries = Object.entries(projHours).sort((a, b) => b[1] - a[1]);
+  let maxProjHours = 0;
+  for (let i = 0; i < projEntries.length; i++) {
+    if (projEntries[i][1] > maxProjHours) maxProjHours = projEntries[i][1];
+  }
+
+  // Stability distribution
+  let stable = 0, moderate = 0, volatile = 0;
+  for (let i = 0; i < members.length; i++) {
+    const s = (members[i].stability_score || '').toUpperCase();
+    if (s === 'STABLE') stable++;
+    else if (s === 'MODERATE') moderate++;
+    else volatile++;
+  }
+
+  // Capacity forecast — simple projection from latest snapshot
+  const latestSnap = snaps.length > 0 ? snaps[snaps.length - 1] : {};
+  const forecastUtil = parseFloat(latestSnap.company_utilization) || 0;
+
+  el.innerHTML = `<div class="fade-in">
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-slate-900">Analytics & Reports</h2>
+      <p class="text-sm text-slate-500 mt-1">Trends, distributions, and capacity forecasting</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <!-- Utilization Trend -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="font-semibold text-slate-900 text-sm">Utilization Trend</h3>
+        </div>
+        <div class="p-5">
+          <div class="flex items-end gap-2 h-48">
+            ${snaps.map(s => {
+              const util = parseFloat(s.company_utilization) || 0;
+              const h = Math.max(util, 5);
+              return `<div class="flex-1 flex flex-col items-center justify-end gap-1">
+                <span class="text-[9px] font-semibold ${utilizationTextColor(util)}">${fmtPct(util)}</span>
+                <div class="w-full rounded-t-md ${utilizationColor(util)} opacity-80" style="height: ${h}%"></div>
+                <span class="text-[9px] text-slate-400 transform -rotate-45 origin-top-left mt-1">${(s.period || '').slice(5)}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+
+      <!-- Revenue Comparison -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="font-semibold text-slate-900 text-sm">Revenue Comparison</h3>
+        </div>
+        <div class="p-5">
+          <div class="flex items-center gap-4 mb-3 text-xs">
+            <div class="flex items-center gap-1.5"><div class="w-3 h-1.5 rounded bg-indigo-500"></div><span class="text-slate-500">Planned</span></div>
+            <div class="flex items-center gap-1.5"><div class="w-3 h-1.5 rounded bg-emerald-500"></div><span class="text-slate-500">Actual</span></div>
+          </div>
+          <div class="space-y-3">
+            ${snaps.slice().reverse().map(s => {
+              const planned = parseFloat(s.planned_revenue) || 0;
+              const actual = parseFloat(s.actual_revenue) || 0;
+              const pW = maxRevenue > 0 ? (planned / maxRevenue * 100) : 0;
+              const aW = maxRevenue > 0 ? (actual / maxRevenue * 100) : 0;
+              return `<div>
+                <div class="flex items-center justify-between text-xs mb-1">
+                  <span class="text-slate-600 font-medium">${esc(s.period)}</span>
+                  <span class="text-slate-400">${fmtCurrency(planned)} / ${fmtCurrency(actual)}</span>
+                </div>
+                <div class="space-y-1">
+                  <div class="w-full bg-slate-100 rounded-full h-2"><div class="h-2 rounded-full bg-indigo-500 gauge-bar" style="width: ${pW}%"></div></div>
+                  <div class="w-full bg-slate-100 rounded-full h-2"><div class="h-2 rounded-full bg-emerald-500 gauge-bar" style="width: ${aW}%"></div></div>
+                </div>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Team Stability -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="font-semibold text-slate-900 text-sm">Team Stability Distribution</h3>
+        </div>
+        <div class="p-5 flex items-center justify-center">
+          <div class="relative w-40 h-40">
+            <svg viewBox="0 0 36 36" class="w-full h-full transform -rotate-90">
+              <circle cx="18" cy="18" r="15.915" fill="none" stroke="#e2e8f0" stroke-width="3"/>
+              <circle cx="18" cy="18" r="15.915" fill="none" stroke="#10b981" stroke-width="3"
+                stroke-dasharray="${pct(stable, members.length)} ${100 - pct(stable, members.length)}" stroke-dashoffset="0"/>
+              <circle cx="18" cy="18" r="15.915" fill="none" stroke="#f59e0b" stroke-width="3"
+                stroke-dasharray="${pct(moderate, members.length)} ${100 - pct(moderate, members.length)}" stroke-dashoffset="${-pct(stable, members.length)}"/>
+              <circle cx="18" cy="18" r="15.915" fill="none" stroke="#ef4444" stroke-width="3"
+                stroke-dasharray="${pct(volatile, members.length)} ${100 - pct(volatile, members.length)}" stroke-dashoffset="${-(pct(stable, members.length) + pct(moderate, members.length))}"/>
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center">
+              <span class="text-2xl font-bold text-slate-900">${members.length}</span>
+              <span class="text-[10px] text-slate-500">members</span>
+            </div>
+          </div>
+        </div>
+        <div class="px-5 pb-5 flex justify-center gap-4 text-xs">
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Stable (${stable})</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Moderate (${moderate})</span>
+          <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span> Volatile (${volatile})</span>
+        </div>
+      </div>
+
+      <!-- Project Hours Distribution -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="font-semibold text-slate-900 text-sm">Project Hours Distribution</h3>
+        </div>
+        <div class="p-5 space-y-3">
+          ${projEntries.slice(0, 8).map(([name, hrs]) => `
+            <div>
+              <div class="flex items-center justify-between text-xs mb-1">
+                <span class="text-slate-600 truncate mr-2">${esc(name)}</span>
+                <span class="text-slate-900 font-medium">${fmtNum(hrs)}h</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-2">
+                <div class="h-2 rounded-full bg-indigo-500 gauge-bar opacity-80" style="width: ${maxProjHours > 0 ? (hrs / maxProjHours * 100) : 0}%"></div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Capacity Forecast -->
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="font-semibold text-slate-900 text-sm">Capacity Forecast</h3>
+        </div>
+        <div class="p-5">
+          <div class="text-center mb-4">
+            <div class="text-3xl font-bold ${utilizationTextColor(forecastUtil)}">${fmtPct(forecastUtil)}</div>
+            <p class="text-xs text-slate-500 mt-1">Current utilization</p>
+          </div>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-slate-600">Total Capacity</span>
+              <span class="font-semibold">${fmtNum(parseFloat(latestSnap.total_capacity))}h</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-slate-600">Total Planned</span>
+              <span class="font-semibold">${fmtNum(parseFloat(latestSnap.total_planned))}h</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-slate-600">Available</span>
+              <span class="font-semibold text-emerald-600">${fmtNum((parseFloat(latestSnap.total_capacity) || 0) - (parseFloat(latestSnap.total_planned) || 0))}h</span>
+            </div>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-slate-600">Headcount</span>
+              <span class="font-semibold">${latestSnap.headcount || members.length}</span>
+            </div>
+          </div>
+          <div class="mt-4 p-3 rounded-lg ${forecastUtil > 90 ? 'bg-red-50' : forecastUtil > 75 ? 'bg-amber-50' : 'bg-emerald-50'}">
+            <p class="text-xs font-medium ${forecastUtil > 90 ? 'text-red-700' : forecastUtil > 75 ? 'text-amber-700' : 'text-emerald-700'}">
+              ${forecastUtil > 90 ? 'Warning: Near capacity. Consider hiring or reprioritizing.' : forecastUtil > 75 ? 'Healthy utilization. Monitor closely.' : 'Good capacity headroom available.'}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ==================== SETTINGS ====================
+function renderSettings(el) {
+  const clients = state.clients;
+  const members = state.teamMembers;
+
+  const totalCapacity = members.reduce((s, m) => s + (parseFloat(m.monthly_capacity) || 0), 0);
+  const avgRate = members.length > 0 ? members.reduce((s, m) => s + (parseFloat(m.hourly_rate) || 0), 0) / members.length : 0;
+
+  el.innerHTML = `<div class="fade-in">
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-slate-900">Settings</h2>
+      <p class="text-sm text-slate-500 mt-1">Company defaults and client management</p>
+    </div>
+
+    <!-- Company Defaults -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm mb-6">
+      <div class="px-5 py-4 border-b border-slate-100">
+        <h3 class="font-semibold text-slate-900 text-sm">Company Defaults</h3>
+      </div>
+      <div class="p-5">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div>
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Total Team Capacity</p>
+            <p class="text-lg font-bold text-slate-900">${fmtNum(totalCapacity)} hrs/month</p>
+          </div>
+          <div>
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Average Hourly Rate</p>
+            <p class="text-lg font-bold text-slate-900">${fmtCurrency(avgRate)}/hr</p>
+          </div>
+          <div>
+            <p class="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Active Members</p>
+            <p class="text-lg font-bold text-slate-900">${members.filter(m => m.is_active !== false).length} / ${members.length}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Client Management -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm">
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-semibold text-slate-900 text-sm">Client Management</h3>
+        <button onclick="showAddClientModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          Add Client
+        </button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b border-slate-100">
+              <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Name</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Industry</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Tier</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Contact</th>
+              <th class="px-5 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${clients.map(c => `
+              <tr class="border-b border-slate-50 hover:bg-slate-50/50">
+                <td class="px-5 py-3 font-medium text-slate-900">${esc(c.name)}</td>
+                <td class="px-5 py-3 text-slate-600">${esc(c.industry || '-')}</td>
+                <td class="px-5 py-3">${tierBadge(c.tier)}</td>
+                <td class="px-5 py-3">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${(c.status || '').toLowerCase() === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}">${esc(c.status || 'Unknown')}</span>
+                </td>
+                <td class="px-5 py-3 text-slate-500 text-xs">${esc(c.contact_email || '-')}</td>
+                <td class="px-5 py-3 text-right">
+                  <div class="flex items-center justify-end gap-1">
+                    <button onclick="showEditClientModal('${c.id}')" class="p-1.5 rounded-lg hover:bg-slate-100 transition-colors" title="Edit">
+                      <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                    </button>
+                    <button onclick="deleteClient('${c.id}', '${esc(c.name)}')" class="p-1.5 rounded-lg hover:bg-red-50 transition-colors" title="Delete">
+                      <svg class="w-3.5 h-3.5 text-slate-400 hover:text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `).join('')}
+            ${clients.length === 0 ? '<tr><td colspan="6" class="px-5 py-8 text-center text-sm text-slate-400">No clients yet</td></tr>' : ''}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>`;
+}
+
+function clientFormHtml(client) {
+  const c = client || {};
+  return `
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-slate-600 mb-1">Client Name *</label>
+        <input id="cf-name" type="text" value="${esc(c.name || '')}" required class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Industry</label>
+          <input id="cf-industry" type="text" value="${esc(c.industry || '')}" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Tier</label>
+          <select id="cf-tier" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+            <option value="1" ${String(c.tier) === '1' ? 'selected' : ''}>Tier 1 - Strategic</option>
+            <option value="2" ${String(c.tier) === '2' ? 'selected' : ''}>Tier 2 - Active</option>
+            <option value="3" ${String(c.tier) === '3' || !c.tier ? 'selected' : ''}>Tier 3 - Support</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Status</label>
+          <select id="cf-status" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+            <option value="Active" ${(c.status || '').toLowerCase() === 'active' ? 'selected' : ''}>Active</option>
+            <option value="Inactive" ${(c.status || '').toLowerCase() === 'inactive' ? 'selected' : ''}>Inactive</option>
+            <option value="Prospect" ${(c.status || '').toLowerCase() === 'prospect' ? 'selected' : ''}>Prospect</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Contact Email</label>
+          <input id="cf-email" type="email" value="${esc(c.contact_email || '')}" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
+        </div>
+      </div>
+    </div>`;
+}
+
+function showAddClientModal() {
+  showModal('Add Client', clientFormHtml(),
+    `<button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+     <button onclick="saveClient()" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">Add Client</button>`
+  );
+}
+
+function showEditClientModal(id) {
+  let client = null;
+  for (let i = 0; i < state.clients.length; i++) {
+    if (state.clients[i].id === id) { client = state.clients[i]; break; }
+  }
+  if (!client) return;
+  showModal('Edit Client', clientFormHtml(client),
+    `<button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>
+     <button onclick="saveClient('${id}')" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">Save Changes</button>`
+  );
+}
+
+async function saveClient(id) {
+  const data = {
+    name: document.getElementById('cf-name').value,
+    industry: document.getElementById('cf-industry').value,
+    tier: parseInt(document.getElementById('cf-tier').value) || 3,
+    status: document.getElementById('cf-status').value,
+    contact_email: document.getElementById('cf-email').value,
+  };
+  if (!data.name) { showToast('Client name is required', 'warning'); return; }
+  try {
+    if (id) {
+      await api('clients/' + id, { method: 'PUT', body: JSON.stringify(data) });
+      showToast('Client updated', 'success');
+    } else {
+      await api('clients', { method: 'POST', body: JSON.stringify(data) });
+      showToast('Client added', 'success');
+    }
+    closeModal();
+    await loadAllData(true);
+  } catch {}
+}
+
+function deleteClient(id, name) {
+  showConfirm('Delete Client', `Are you sure you want to delete <strong>${name}</strong>? This action cannot be undone.`, async () => {
+    try {
+      await api('clients/' + id, { method: 'DELETE' });
+      showToast('Client deleted', 'success');
+      await loadAllData(true);
+    } catch {}
+  });
+}
+
+// ==================== INIT ====================
+loadAllData().then(() => render());
+</script>
+</body>
+</html>

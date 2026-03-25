@@ -1,0 +1,12 @@
+{
+  "name": "resource-harmony-spec",
+  "version": "2.0.0",
+  "description": "Resource Harmony Pro — spec-driven resource management",
+  "type": "module",
+  "scripts": {
+    "build": "echo 'static app, no build step'",
+    "start": "bun serve.ts",
+    "dev": "bun --watch serve.ts"
+  },
+  "dependencies": {}
+}
