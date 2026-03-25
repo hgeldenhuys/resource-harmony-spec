@@ -295,7 +295,7 @@ connectSSE();
 function esc(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
 function pct(val, max) { return max > 0 ? Math.round((val / max) * 100) : 0; }
 function fmtNum(n) { return (n || 0).toLocaleString(); }
-function fmtCurrency(n) { return '$' + (n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+function fmtCurrency(n) { return 'R' + (n || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
 function fmtPct(n) { return (n || 0).toFixed(1) + '%'; }
 function initials(name) {
   if (!name) return '??';
@@ -393,7 +393,31 @@ function renderDashboard(el) {
   const totalActual = allocs.reduce((s, a) => s + (parseFloat(a.actual_hours) || 0), 0);
   const utilPct = totalCapacity > 0 ? (totalPlanned / totalCapacity * 100) : 0;
   const latestSnap = snaps.length > 0 ? snaps[0] : {};
+  const prevSnap = snaps.length > 1 ? snaps[1] : null;
   const revenue = parseFloat(latestSnap.planned_revenue) || 0;
+
+  // Month-over-month deltas
+  const prevCapacity = prevSnap ? parseFloat(prevSnap.total_capacity) || 0 : null;
+  const prevPlanned = prevSnap ? parseFloat(prevSnap.total_planned) || 0 : null;
+  const prevActual = prevSnap ? parseFloat(prevSnap.total_actual) || 0 : null;
+  const prevUtil = prevSnap ? parseFloat(prevSnap.company_utilization) || 0 : null;
+  const prevRevenue = prevSnap ? parseFloat(prevSnap.planned_revenue) || 0 : null;
+  const curCapacity = parseFloat(latestSnap.total_capacity) || 0;
+  const curPlanned = parseFloat(latestSnap.total_planned) || 0;
+  const curActual = parseFloat(latestSnap.total_actual) || 0;
+  const curUtil = parseFloat(latestSnap.company_utilization) || 0;
+
+  function deltaHtml(current, previous, fmt, suffix, invert) {
+    if (previous === null) return '';
+    const diff = current - previous;
+    if (Math.abs(diff) < 0.01) return '';
+    const isPositive = diff > 0;
+    const isGood = invert ? !isPositive : isPositive;
+    const arrow = isPositive ? '&#x25B2;' : '&#x25BC;';
+    const color = isGood ? 'text-emerald-600 bg-emerald-50' : 'text-red-600 bg-red-50';
+    const sign = isPositive ? '+' : '';
+    return '<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ' + color + '">' + arrow + ' ' + sign + fmt(diff) + (suffix || '') + '</span>';
+  }
 
   // Team utilization per member
   const memberUtils = [];
@@ -443,7 +467,10 @@ function renderDashboard(el) {
             <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
           </div>
         </div>
-        <div class="text-2xl font-bold text-slate-900">${members.length}</div>
+        <div class="flex items-center gap-2">
+          <div class="text-2xl font-bold text-slate-900">${members.length}</div>
+          ${deltaHtml(curCapacity, prevCapacity, fmtNum, 'h', false)}
+        </div>
         <div class="text-xs text-slate-400 mt-1">${fmtNum(totalCapacity)} hrs capacity</div>
       </div>
       <div class="card bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
@@ -453,7 +480,10 @@ function renderDashboard(el) {
             <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </div>
         </div>
-        <div class="text-2xl font-bold text-slate-900">${fmtNum(totalPlanned)}</div>
+        <div class="flex items-center gap-2">
+          <div class="text-2xl font-bold text-slate-900">${fmtNum(curPlanned)}</div>
+          ${deltaHtml(curPlanned, prevPlanned, fmtNum, 'h', false)}
+        </div>
         <div class="text-xs text-slate-400 mt-1">across ${projects.length} projects</div>
       </div>
       <div class="card bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
@@ -463,8 +493,11 @@ function renderDashboard(el) {
             <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </div>
         </div>
-        <div class="text-2xl font-bold text-slate-900">${fmtNum(totalActual)}</div>
-        <div class="text-xs ${totalActual > totalPlanned ? 'text-red-500' : 'text-slate-400'} mt-1">${totalActual > totalPlanned ? '+' : ''}${fmtNum(totalActual - totalPlanned)} variance</div>
+        <div class="flex items-center gap-2">
+          <div class="text-2xl font-bold text-slate-900">${fmtNum(curActual)}</div>
+          ${deltaHtml(curActual, prevActual, fmtNum, 'h', true)}
+        </div>
+        <div class="text-xs ${curActual > curPlanned ? 'text-red-500' : 'text-slate-400'} mt-1">${curActual > curPlanned ? '+' : ''}${fmtNum(curActual - curPlanned)} variance</div>
       </div>
       <div class="card bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
         <div class="flex items-center justify-between mb-3">
@@ -473,8 +506,11 @@ function renderDashboard(el) {
             <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
           </div>
         </div>
-        <div class="text-2xl font-bold ${utilizationTextColor(utilPct)}">${fmtPct(utilPct)}</div>
-        <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2"><div class="h-1.5 rounded-full gauge-bar ${utilizationColor(utilPct)}" style="width: ${Math.min(utilPct, 100)}%"></div></div>
+        <div class="flex items-center gap-2">
+          <div class="text-2xl font-bold ${utilizationTextColor(curUtil)}">${fmtPct(curUtil)}</div>
+          ${deltaHtml(curUtil, prevUtil, function(v) { return v.toFixed(1); }, '%', false)}
+        </div>
+        <div class="w-full bg-slate-100 rounded-full h-1.5 mt-2"><div class="h-1.5 rounded-full gauge-bar ${utilizationColor(curUtil)}" style="width: ${Math.min(curUtil, 100)}%"></div></div>
       </div>
       <div class="card bg-white rounded-xl p-5 border border-slate-200 shadow-sm">
         <div class="flex items-center justify-between mb-3">
@@ -483,7 +519,10 @@ function renderDashboard(el) {
             <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
           </div>
         </div>
-        <div class="text-2xl font-bold text-slate-900">${fmtCurrency(revenue)}</div>
+        <div class="flex items-center gap-2">
+          <div class="text-2xl font-bold text-slate-900">${fmtCurrency(revenue)}</div>
+          ${deltaHtml(revenue, prevRevenue, fmtCurrency, '', false)}
+        </div>
         <div class="text-xs text-slate-400 mt-1">planned revenue</div>
       </div>
     </div>
@@ -763,7 +802,7 @@ function memberFormHtml(member) {
           <input id="mf-capacity" type="number" value="${m.monthly_capacity || 160}" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
         </div>
         <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">Hourly Rate ($)</label>
+          <label class="block text-xs font-medium text-slate-600 mb-1">Hourly Rate (R)</label>
           <input id="mf-rate" type="number" value="${m.hourly_rate || 0}" class="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500">
         </div>
       </div>
@@ -1010,16 +1049,24 @@ function renderPlanning(el) {
                 ${projects.map(p => {
                   const cell = (matrix[m.id] || {})[p.id];
                   const val = cell ? cell.planned : 0;
-                  return `<td class="px-1 py-1 text-center">
-                    <input type="number" min="0" max="999" value="${val || ''}" placeholder="—"
-                      class="w-full text-center text-xs px-1 py-1.5 rounded border border-transparent hover:border-slate-200 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400/30 transition-colors ${val > 0 ? 'bg-indigo-50/50 font-medium text-indigo-700' : 'text-slate-400'}"
-                      onchange="updateAllocation('${m.id}', '${p.id}', '${selectedMonth}', this.value, '${m.name}', '${esc(p.name)}'${cell ? ", '" + cell.id + "'" : ''})">
+                  const cellColorClass = val > 0 ? (rt.utilization >= 95 ? 'bg-red-50' : rt.utilization >= 85 ? 'bg-amber-50' : 'bg-emerald-50') : '';
+                  return `<td class="px-0 py-0.5 text-center">
+                    <div id="plan-wrap-${m.id}-${p.id}" data-plan-wrap-member="${m.id}" class="flex items-center justify-center gap-0 rounded ${cellColorClass}">
+                      <button onclick="planCellAdjust('${m.id}', '${p.id}', '${selectedMonth}', '${m.name}', '${esc(p.name)}', ${cell ? "'" + cell.id + "'" : 'null'}, -4)"
+                        class="w-5 h-6 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-l text-xs font-bold transition-colors" title="-4h">&minus;</button>
+                      <input type="number" min="0" max="999" value="${val || ''}" placeholder="—"
+                        id="plan-cell-${m.id}-${p.id}" data-plan-member="${m.id}"
+                        class="w-12 text-center text-xs px-0 py-1.5 border-0 bg-transparent focus:outline-none focus:ring-0 ${val > 0 ? 'font-medium text-indigo-700' : 'text-slate-400'}"
+                        onchange="planCellChange('${m.id}', '${p.id}', '${selectedMonth}', '${m.name}', '${esc(p.name)}', ${cell ? "'" + cell.id + "'" : 'null'})">
+                      <button onclick="planCellAdjust('${m.id}', '${p.id}', '${selectedMonth}', '${m.name}', '${esc(p.name)}', ${cell ? "'" + cell.id + "'" : 'null'}, 4)"
+                        class="w-5 h-6 flex items-center justify-center text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-r text-xs font-bold transition-colors" title="+4h">+</button>
+                    </div>
                   </td>`;
                 }).join('')}
-                <td class="px-3 py-2.5 text-center font-semibold text-slate-900 bg-slate-50/50">${fmtNum(rt.planned)}</td>
+                <td id="plan-total-${m.id}" class="px-3 py-2.5 text-center font-semibold text-slate-900 bg-slate-50/50">${fmtNum(rt.planned)}</td>
                 <td class="px-3 py-2.5 text-center text-slate-600 bg-slate-50/50">${fmtNum(rt.capacity)}</td>
-                <td class="px-3 py-2.5 text-center ${rt.variance < 0 ? 'text-red-600 font-semibold' : 'text-emerald-600'} bg-slate-50/50">${rt.variance > 0 ? '+' : ''}${fmtNum(rt.variance)}</td>
-                <td class="px-3 py-2.5 text-center ${utilClass} bg-slate-50/50">${fmtPct(rt.utilization)}</td>
+                <td id="plan-variance-${m.id}" class="px-3 py-2.5 text-center ${rt.variance < 0 ? 'text-red-600 font-semibold' : 'text-emerald-600'} bg-slate-50/50">${rt.variance > 0 ? '+' : ''}${fmtNum(rt.variance)}</td>
+                <td id="plan-util-${m.id}" class="px-3 py-2.5 text-center ${utilClass} bg-slate-50/50">${fmtPct(rt.utilization)}</td>
               </tr>`;
             }).join('')}
           </tbody>
@@ -1087,7 +1134,8 @@ function renderActuals(el) {
         <p class="text-sm text-slate-500 mt-1">Record actual hours spent by team and project</p>
       </div>
       <div class="flex items-center gap-3">
-        <button onclick="showToast('Harvest integration coming soon', 'info')" class="inline-flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
+        <input type="file" id="harvest-csv-input" accept=".csv" class="hidden" onchange="handleHarvestCSV(this)">
+        <button onclick="document.getElementById('harvest-csv-input').click()" class="inline-flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
           Import from Harvest
         </button>
@@ -1522,6 +1570,348 @@ function deleteClient(id, name) {
       await loadAllData(true);
     } catch {}
   });
+}
+
+// ==================== HARVEST CSV IMPORT ====================
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  // Parse header
+  const header = lines[0].split(',');
+  const colMap = {};
+  for (let i = 0; i < header.length; i++) {
+    const h = header[i].trim().replace(/^"|"$/g, '').toLowerCase();
+    if (h === 'project') colMap.project = i;
+    else if (h === 'team member' || h === 'member' || h === 'name' || h === 'employee') colMap.member = i;
+    else if (h === 'hours' || h === 'total hours' || h === 'actual hours') colMap.hours = i;
+  }
+  if (colMap.project === undefined || colMap.member === undefined || colMap.hours === undefined) return null;
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    // Simple CSV split handling quoted fields
+    const fields = [];
+    let current = '';
+    let inQuotes = false;
+    for (let j = 0; j < line.length; j++) {
+      const ch = line[j];
+      if (ch === '"') { inQuotes = !inQuotes; continue; }
+      if (ch === ',' && !inQuotes) { fields.push(current.trim()); current = ''; continue; }
+      current += ch;
+    }
+    fields.push(current.trim());
+    const project = fields[colMap.project] || '';
+    const member = fields[colMap.member] || '';
+    const hours = parseFloat(fields[colMap.hours]) || 0;
+    if (project && member && hours > 0) {
+      rows.push({ project, member, hours });
+    }
+  }
+  return rows;
+}
+
+function matchProjectByName(name) {
+  const lower = name.toLowerCase().trim();
+  for (let i = 0; i < state.projects.length; i++) {
+    if (state.projects[i].name.toLowerCase().trim() === lower) return state.projects[i];
+  }
+  // Fuzzy: check if project name contains the search or vice versa
+  for (let i = 0; i < state.projects.length; i++) {
+    if (state.projects[i].name.toLowerCase().includes(lower) || lower.includes(state.projects[i].name.toLowerCase())) return state.projects[i];
+  }
+  return null;
+}
+
+function matchMemberByName(name) {
+  const lower = name.toLowerCase().trim();
+  for (let i = 0; i < state.teamMembers.length; i++) {
+    const m = state.teamMembers[i];
+    if (m.name.toLowerCase().trim() === lower) return m;
+  }
+  // Match by first name
+  for (let i = 0; i < state.teamMembers.length; i++) {
+    const m = state.teamMembers[i];
+    const firstName = m.name.split(' ')[0].toLowerCase();
+    if (firstName === lower || lower === firstName) return m;
+  }
+  // Partial match
+  for (let i = 0; i < state.teamMembers.length; i++) {
+    const m = state.teamMembers[i];
+    if (m.name.toLowerCase().includes(lower) || lower.includes(m.name.toLowerCase())) return m;
+  }
+  return null;
+}
+
+function handleHarvestCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const text = e.target.result;
+    const rows = parseCSV(text);
+    if (rows === null) {
+      showToast('Invalid CSV format. Expected columns: Project, Team Member, Hours', 'error');
+      input.value = '';
+      return;
+    }
+    if (rows.length === 0) {
+      showToast('No valid data rows found in CSV', 'warning');
+      input.value = '';
+      return;
+    }
+    // Match rows to projects and members
+    const matched = [];
+    const unmatched = [];
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      const project = matchProjectByName(r.project);
+      const member = matchMemberByName(r.member);
+      if (project && member) {
+        matched.push({ ...r, projectMatch: project, memberMatch: member });
+      } else {
+        unmatched.push({ ...r, projectMatch: project, memberMatch: member });
+      }
+    }
+    showHarvestPreview(matched, unmatched);
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function showHarvestPreview(matched, unmatched) {
+  let body = '';
+  if (matched.length > 0) {
+    body += '<p class="text-sm font-semibold text-slate-700 mb-2">Matched Records (' + matched.length + ')</p>';
+    body += '<div class="max-h-48 overflow-y-auto mb-4 border border-slate-200 rounded-lg">';
+    body += '<table class="w-full text-xs">';
+    body += '<thead><tr class="bg-slate-50 border-b border-slate-200"><th class="px-3 py-2 text-left font-semibold text-slate-500">Project</th><th class="px-3 py-2 text-left font-semibold text-slate-500">Member</th><th class="px-3 py-2 text-right font-semibold text-slate-500">Hours</th></tr></thead>';
+    body += '<tbody>';
+    for (let i = 0; i < matched.length; i++) {
+      const r = matched[i];
+      body += '<tr class="border-b border-slate-50"><td class="px-3 py-1.5 text-slate-700">' + esc(r.projectMatch.name) + '</td><td class="px-3 py-1.5 text-slate-700">' + esc(r.memberMatch.name) + '</td><td class="px-3 py-1.5 text-right font-medium text-slate-900">' + r.hours + 'h</td></tr>';
+    }
+    body += '</tbody></table></div>';
+  }
+  if (unmatched.length > 0) {
+    body += '<p class="text-sm font-semibold text-amber-700 mb-2">Unmatched Records (' + unmatched.length + ') &mdash; will be skipped</p>';
+    body += '<div class="max-h-32 overflow-y-auto mb-4 border border-amber-200 rounded-lg bg-amber-50/50">';
+    body += '<table class="w-full text-xs">';
+    body += '<thead><tr class="bg-amber-50 border-b border-amber-200"><th class="px-3 py-2 text-left font-semibold text-amber-600">Project</th><th class="px-3 py-2 text-left font-semibold text-amber-600">Member</th><th class="px-3 py-2 text-right font-semibold text-amber-600">Hours</th><th class="px-3 py-2 text-left font-semibold text-amber-600">Issue</th></tr></thead>';
+    body += '<tbody>';
+    for (let i = 0; i < unmatched.length; i++) {
+      const r = unmatched[i];
+      const issue = !r.projectMatch ? 'Project not found' : 'Member not found';
+      body += '<tr class="border-b border-amber-100"><td class="px-3 py-1.5 text-amber-800">' + esc(r.project) + '</td><td class="px-3 py-1.5 text-amber-800">' + esc(r.member) + '</td><td class="px-3 py-1.5 text-right font-medium text-amber-900">' + r.hours + 'h</td><td class="px-3 py-1.5 text-amber-600 italic">' + issue + '</td></tr>';
+    }
+    body += '</tbody></table></div>';
+  }
+  if (matched.length === 0) {
+    body += '<p class="text-sm text-red-600">No records could be matched to existing projects and team members.</p>';
+    showModal('Harvest Import Preview', body,
+      '<button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Close</button>');
+    return;
+  }
+  const totalHours = matched.reduce(function(s, r) { return s + r.hours; }, 0);
+  body += '<p class="text-xs text-slate-500">Total: <strong>' + fmtNum(totalHours) + ' hours</strong> across ' + matched.length + ' allocations for <strong>' + state.actualsMonth + '</strong></p>';
+
+  // Store matched data globally for the confirm action
+  window.__harvestImportData = matched;
+
+  showModal('Harvest Import Preview', body,
+    '<button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>' +
+    '<button onclick="confirmHarvestImport()" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">Import ' + matched.length + ' Records</button>');
+}
+
+async function confirmHarvestImport() {
+  const matched = window.__harvestImportData || [];
+  if (matched.length === 0) { closeModal(); return; }
+  closeModal();
+  const month = state.actualsMonth;
+  let successCount = 0;
+  let errorCount = 0;
+
+  // Build a map of existing allocations for this month
+  const existingMap = {};
+  for (let i = 0; i < state.allocations.length; i++) {
+    const a = state.allocations[i];
+    if (a.period_month === month) {
+      existingMap[a.member_id + '::' + a.project_id] = a;
+    }
+  }
+
+  for (let i = 0; i < matched.length; i++) {
+    const r = matched[i];
+    const key = r.memberMatch.id + '::' + r.projectMatch.id;
+    const existing = existingMap[key];
+    try {
+      if (existing) {
+        await api('allocations/' + existing.id, {
+          method: 'PUT',
+          body: JSON.stringify({ actual_hours: r.hours }),
+        });
+      } else {
+        await api('allocations', {
+          method: 'POST',
+          body: JSON.stringify({
+            member_id: r.memberMatch.id,
+            project_id: r.projectMatch.id,
+            period_month: month,
+            planned_hours: 0,
+            actual_hours: r.hours,
+            member_name: r.memberMatch.name,
+            project_name: r.projectMatch.name,
+          }),
+        });
+      }
+      successCount++;
+    } catch (e) {
+      errorCount++;
+    }
+  }
+
+  if (errorCount > 0) {
+    showToast('Imported ' + successCount + ' records, ' + errorCount + ' failed', 'warning');
+  } else {
+    showToast('Successfully imported ' + successCount + ' records from Harvest', 'success');
+  }
+  window.__harvestImportData = null;
+  await loadAllData(true);
+}
+
+// ==================== PLANNING CONTROLS ====================
+let _planSaveTimers = {};
+function planCellAdjust(memberId, projectId, month, memberName, projectName, existingId, delta) {
+  const cellId = 'plan-cell-' + memberId + '-' + projectId;
+  const inputEl = document.getElementById(cellId);
+  if (!inputEl) return;
+  let val = parseFloat(inputEl.value) || 0;
+  val = Math.max(0, val + delta);
+  inputEl.value = val > 0 ? val : '';
+  // Update visual style
+  if (val > 0) {
+    inputEl.classList.add('bg-indigo-50/50', 'font-medium', 'text-indigo-700');
+    inputEl.classList.remove('text-slate-400');
+  } else {
+    inputEl.classList.remove('bg-indigo-50/50', 'font-medium', 'text-indigo-700');
+    inputEl.classList.add('text-slate-400');
+  }
+  // Determine utilization color for this cell
+  updatePlanCellColor(memberId, projectId, val);
+  // Recalculate row totals immediately
+  updatePlanningRowTotal(memberId);
+  // Debounced save
+  const timerKey = memberId + '::' + projectId;
+  if (_planSaveTimers[timerKey]) clearTimeout(_planSaveTimers[timerKey]);
+  _planSaveTimers[timerKey] = setTimeout(function() {
+    planCellSave(memberId, projectId, month, val, memberName, projectName, existingId, cellId);
+  }, 500);
+}
+
+function planCellChange(memberId, projectId, month, memberName, projectName, existingId) {
+  const cellId = 'plan-cell-' + memberId + '-' + projectId;
+  const inputEl = document.getElementById(cellId);
+  if (!inputEl) return;
+  const val = parseFloat(inputEl.value) || 0;
+  updatePlanCellColor(memberId, projectId, val);
+  updatePlanningRowTotal(memberId);
+  const timerKey = memberId + '::' + projectId;
+  if (_planSaveTimers[timerKey]) clearTimeout(_planSaveTimers[timerKey]);
+  _planSaveTimers[timerKey] = setTimeout(function() {
+    planCellSave(memberId, projectId, month, val, memberName, projectName, existingId, cellId);
+  }, 500);
+}
+
+function updatePlanCellColor(memberId, projectId, val) {
+  const wrapper = document.getElementById('plan-wrap-' + memberId + '-' + projectId);
+  if (!wrapper) return;
+  // Compute this member's total hours across all projects
+  let memberTotal = 0;
+  const memberCells = document.querySelectorAll('[data-plan-member="' + memberId + '"]');
+  for (let i = 0; i < memberCells.length; i++) {
+    memberTotal += parseFloat(memberCells[i].value) || 0;
+  }
+  // Find member capacity
+  let capacity = 160;
+  for (let i = 0; i < state.teamMembers.length; i++) {
+    if (state.teamMembers[i].id === memberId) {
+      capacity = parseFloat(state.teamMembers[i].monthly_capacity) || 160;
+      break;
+    }
+  }
+  const utilPct = capacity > 0 ? (memberTotal / capacity * 100) : 0;
+  // Remove old color classes
+  wrapper.classList.remove('bg-emerald-50', 'bg-amber-50', 'bg-red-50');
+  if (val > 0) {
+    if (utilPct >= 95) wrapper.classList.add('bg-red-50');
+    else if (utilPct >= 85) wrapper.classList.add('bg-amber-50');
+    else wrapper.classList.add('bg-emerald-50');
+  }
+}
+
+function updatePlanningRowTotal(memberId) {
+  const cells = document.querySelectorAll('[data-plan-member="' + memberId + '"]');
+  let total = 0;
+  for (let i = 0; i < cells.length; i++) {
+    total += parseFloat(cells[i].value) || 0;
+  }
+  let capacity = 160;
+  for (let i = 0; i < state.teamMembers.length; i++) {
+    if (state.teamMembers[i].id === memberId) {
+      capacity = parseFloat(state.teamMembers[i].monthly_capacity) || 160;
+      break;
+    }
+  }
+  const variance = capacity - total;
+  const utilPct = capacity > 0 ? (total / capacity * 100) : 0;
+  const plannedEl = document.getElementById('plan-total-' + memberId);
+  const varianceEl = document.getElementById('plan-variance-' + memberId);
+  const utilEl = document.getElementById('plan-util-' + memberId);
+  if (plannedEl) plannedEl.textContent = fmtNum(total);
+  if (varianceEl) {
+    varianceEl.textContent = (variance > 0 ? '+' : '') + fmtNum(variance);
+    varianceEl.className = 'px-3 py-2.5 text-center bg-slate-50/50 ' + (variance < 0 ? 'text-red-600 font-semibold' : 'text-emerald-600');
+  }
+  if (utilEl) {
+    utilEl.textContent = fmtPct(utilPct);
+    const utilClass = utilPct >= 95 ? 'text-red-600 font-bold' : utilPct >= 85 ? 'text-amber-600 font-semibold' : utilPct >= 70 ? 'text-emerald-600' : 'text-slate-500';
+    utilEl.className = 'px-3 py-2.5 text-center bg-slate-50/50 ' + utilClass;
+  }
+  // Update all cell colors for this member
+  const allWraps = document.querySelectorAll('[data-plan-wrap-member="' + memberId + '"]');
+  for (let i = 0; i < allWraps.length; i++) {
+    const cellInput = allWraps[i].querySelector('input');
+    const cellVal = cellInput ? parseFloat(cellInput.value) || 0 : 0;
+    allWraps[i].classList.remove('bg-emerald-50', 'bg-amber-50', 'bg-red-50');
+    if (cellVal > 0) {
+      if (utilPct >= 95) allWraps[i].classList.add('bg-red-50');
+      else if (utilPct >= 85) allWraps[i].classList.add('bg-amber-50');
+      else allWraps[i].classList.add('bg-emerald-50');
+    }
+  }
+}
+
+async function planCellSave(memberId, projectId, month, hours, memberName, projectName, existingId, cellId) {
+  const wrapper = document.getElementById('plan-wrap-' + memberId + '-' + projectId);
+  // Pulse animation to indicate saving
+  if (wrapper) {
+    wrapper.style.transition = 'opacity 0.15s ease';
+    wrapper.style.opacity = '0.5';
+    setTimeout(function() { if (wrapper) wrapper.style.opacity = '1'; }, 300);
+  }
+  try {
+    if (existingId && hours > 0) {
+      await api('allocations/' + existingId, { method: 'PUT', body: JSON.stringify({ planned_hours: hours }) });
+    } else if (existingId && hours === 0) {
+      await api('allocations/' + existingId, { method: 'DELETE' });
+    } else if (hours > 0) {
+      await api('allocations', { method: 'POST', body: JSON.stringify({
+        member_id: memberId, project_id: projectId, period_month: month,
+        planned_hours: hours, actual_hours: 0, member_name: memberName, project_name: projectName,
+      })});
+    }
+    await loadAllData(true);
+  } catch {}
 }
 
 // ==================== INIT ====================
