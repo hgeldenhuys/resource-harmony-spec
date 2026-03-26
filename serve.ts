@@ -7,6 +7,7 @@ const API_URL = process.env["KAPABLE_API_URL"] || "https://api.kapable.dev";
 const DATA_KEY = process.env["KAPABLE_DATA_KEY"] || "";
 const GATE_SECRET = process.env["GATE_SECRET"] || "default-gate-secret";
 const DEMO_PASSWORD = process.env["DEMO_PASSWORD"] || "kapable2026";
+const OPENROUTER_API_KEY = process.env["OPENROUTER_API_KEY"] || "";
 const PUBLIC_DIR = join(import.meta.dir, "public");
 
 const MIME_TYPES: Record<string, string> = {
@@ -229,6 +230,103 @@ const server = Bun.serve({
         });
       } catch {
         return new Response("SSE connection failed", { status: 502 });
+      }
+    }
+
+    // AI Suggestion endpoint
+    if (pathname === "/api/ai/suggest" && request.method === "POST") {
+      if (!OPENROUTER_API_KEY) {
+        return new Response(JSON.stringify({ error: "AI not configured — set OPENROUTER_API_KEY" }), {
+          status: 503, headers: { "Content-Type": "application/json" },
+        });
+      }
+      try {
+        const body = await request.json() as {
+          members: { name: string; capacity: number; planned: number; utilization: number }[];
+          projects: { name: string; tier: string; type: string; totalPlanned: number }[];
+          month: string;
+        };
+
+        const systemPrompt = `You are a resource allocation optimization advisor for a software consultancy.
+You analyze team utilization data and suggest rebalancing to improve efficiency.
+
+Rules:
+- Target utilization: 70-85% for developers, 50-70% for management/architects
+- Tier 1 projects (revenue-critical) should be fully staffed before tier 2/3
+- Internal projects should not exceed 15-20% of any person's capacity
+- Never suggest allocating someone to a project they have zero context on without noting the ramp-up cost
+- Prefer small adjustments (4-8 hours) over large rebalancing
+- Flag anyone over 90% utilization as burnout risk
+- Flag anyone under 50% utilization as underutilized
+
+Respond with a JSON object containing a "suggestions" array. Each suggestion has:
+- "member": team member name
+- "project": project name
+- "action": "increase" | "decrease" | "remove" | "add"
+- "hours": number of hours to adjust
+- "reason": brief explanation (1 sentence)
+- "impact": "high" | "medium" | "low"
+
+Also include a "summary" string (2-3 sentences) and a "risks" array of strings.`;
+
+        const userPrompt = `Analyze this resource allocation for ${body.month} and suggest optimizations:
+
+TEAM UTILIZATION:
+${body.members.map(m => `- ${m.name}: ${m.planned}h / ${m.capacity}h (${m.utilization.toFixed(0)}% utilized)`).join('\n')}
+
+PROJECT ALLOCATIONS:
+${body.projects.map(p => `- ${p.name} [${p.tier}, ${p.type}]: ${p.totalPlanned}h total`).join('\n')}
+
+Suggest specific rebalancing moves to optimize utilization and project coverage.`;
+
+        const aiResp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            "HTTP-Referer": "https://resource-harmony-spec.kapable.run",
+            "X-Title": "Resource Harmony Pro",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.0-flash-001",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt },
+            ],
+            max_tokens: 2000,
+            temperature: 0.3,
+            response_format: { type: "json_object" },
+          }),
+        });
+
+        if (!aiResp.ok) {
+          const errText = await aiResp.text();
+          console.error("AI API error:", aiResp.status, errText);
+          return new Response(JSON.stringify({ error: "AI service error" }), {
+            status: 502, headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const aiData = await aiResp.json() as { choices: { message: { content: string } }[] };
+        const content = aiData.choices?.[0]?.message?.content || "{}";
+        // Parse the JSON from the response
+        let suggestions;
+        try {
+          suggestions = JSON.parse(content);
+        } catch {
+          // Try to extract JSON from markdown code blocks
+          const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
+          suggestions = jsonMatch ? JSON.parse(jsonMatch[1]) : { suggestions: [], summary: content, risks: [] };
+        }
+
+        return new Response(JSON.stringify(suggestions), {
+          headers: { "Content-Type": "application/json" },
+        });
+      } catch (err) {
+        console.error("AI suggestion error:", err);
+        return new Response(JSON.stringify({ error: "Failed to generate suggestions" }), {
+          status: 500, headers: { "Content-Type": "application/json" },
+        });
       }
     }
 

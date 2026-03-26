@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Resource Harmony Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -51,7 +52,7 @@
 
 <!-- Modal container -->
 <div id="modal-overlay" class="fixed inset-0 z-50 hidden items-center justify-center modal-backdrop">
-  <div id="modal-content" class="bg-white rounded-2xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto"></div>
+  <div id="modal-content" class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto"></div>
 </div>
 
 <!-- App shell -->
@@ -986,6 +987,10 @@ function renderPlanning(el) {
         <p class="text-sm text-slate-500 mt-1">Allocate planned hours by team member and project</p>
       </div>
       <div class="flex items-center gap-3">
+        <button onclick="suggestAllocation()" id="suggest-btn" class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-semibold rounded-lg shadow-md shadow-indigo-600/20 hover:shadow-indigo-500/30 transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+          AI Suggest
+        </button>
         <select id="planning-month" onchange="state.planningMonth = this.value; renderCurrentView()" class="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30">
           ${months.map(m => `<option value="${m}" ${m === selectedMonth ? 'selected' : ''}>${m}</option>`).join('')}
         </select>
@@ -1103,11 +1108,12 @@ function renderActuals(el) {
         <p class="text-sm text-slate-500 mt-1">Record actual hours spent by team and project</p>
       </div>
       <div class="flex items-center gap-3">
-        <input type="file" id="harvest-csv-input" accept=".csv" class="hidden" onchange="handleHarvestCSV(this)">
+        <input type="file" id="harvest-csv-input" accept=".csv,.xlsx,.xls" class="hidden" onchange="handleFileImport(this)">
         <button onclick="document.getElementById('harvest-csv-input').click()" class="inline-flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors">
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-          Import from Harvest
+          Import Hours
         </button>
+        <button onclick="showImportHelp()" class="inline-flex items-center justify-center w-8 h-8 bg-white border border-slate-200 text-slate-400 text-xs rounded-lg hover:bg-slate-50 hover:text-slate-600 transition-colors" title="Import help">?</button>
         <select id="actuals-month" onchange="state.actualsMonth = this.value; renderCurrentView()" class="px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30">
           ${months.map(m => `<option value="${m}" ${m === selectedMonth ? 'selected' : ''}>${m}</option>`).join('')}
         </select>
@@ -1544,129 +1550,402 @@ function deleteClient(id, name) {
   });
 }
 
-// ==================== HARVEST CSV IMPORT ====================
-function parseCSV(text) {
-  const lines = text.trim().split('\n');
-  if (lines.length < 2) return [];
-  // Parse header
-  const header = lines[0].split(',');
-  const colMap = {};
-  for (let i = 0; i < header.length; i++) {
-    const h = header[i].trim().replace(/^"|"$/g, '').toLowerCase();
-    if (h === 'project') colMap.project = i;
-    else if (h === 'team member' || h === 'member' || h === 'name' || h === 'employee') colMap.member = i;
-    else if (h === 'hours' || h === 'total hours' || h === 'actual hours') colMap.hours = i;
-  }
-  if (colMap.project === undefined || colMap.member === undefined || colMap.hours === undefined) return null;
-  const rows = [];
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    // Simple CSV split handling quoted fields
-    const fields = [];
-    let current = '';
-    let inQuotes = false;
-    for (let j = 0; j < line.length; j++) {
-      const ch = line[j];
-      if (ch === '"') { inQuotes = !inQuotes; continue; }
-      if (ch === ',' && !inQuotes) { fields.push(current.trim()); current = ''; continue; }
-      current += ch;
-    }
-    fields.push(current.trim());
-    const project = fields[colMap.project] || '';
-    const member = fields[colMap.member] || '';
-    const hours = parseFloat(fields[colMap.hours]) || 0;
-    if (project && member && hours > 0) {
-      rows.push({ project, member, hours });
-    }
-  }
-  return rows;
-}
+// ==================== IMPORT ENGINE ====================
+// Nickname/alias map for fuzzy member matching
+const MEMBER_ALIASES = {
+  'alex': 'alexander', 'suri': 'surietha', 'mat': 'mathilde',
+  'tilde': 'mathilde', 'roz': 'rozanne', 'jo': 'johlan',
+  'herm': 'herman', 'gray': 'graham', 'nal': 'naldo',
+};
+// Project alias map: CSV name fragments → system project name fragments
+const PROJECT_ALIASES = {
+  'africa direct': 'africa direct', 'bond optimiser': 'africa direct',
+  'efg': 'efg wealth', 'efficient group': 'efg wealth', 'wealth connect': 'efg wealth',
+  'growthfin': 'growth finance', 'leadscout': 'growth finance', 'growth finance': 'growth finance',
+  'astron': 'astron tracs', 'tracs': 'astron tracs',
+  'aquacheck': 'aquacheck', 'aqua check': 'aquacheck',
+  'axiz': 'axiz pricing', 'pricing modulator': 'axiz pricing',
+  'the continent': 'continent', 'continent cms': 'continent',
+  'agileworks ops': 'agileworks operations', 'agile ops': 'agileworks operations', 'operations': 'agileworks operations',
+  'agileworks marketing': 'marketing & sales', 'marketing': 'marketing & sales',
+  'agileworks r&d': 'internal r&d', 'r&d': 'internal r&d', 'research': 'internal r&d',
+  'octose pre': 'octose pre', 'pre capital': 'octose pre',
+  'octose capacity': 'octose capacity', 'capacity connect': 'octose capacity',
+  'octose ai': 'octose ai', 'ai cfo': 'octose ai',
+  'adcorp': 'adcorp', 'matogen': 'adcorp',
+  'fig distribution': 'fig distribution', 'fig dist': 'fig distribution',
+  'mattress': 'mattress warehouse', 'kooi': 'mattress warehouse',
+  'rijks': 'farm management', 'farm management': 'farm management',
+  'internal': 'internal / admin', 'admin': 'internal / admin',
+  'mwf toolkit': 'mwf toolkit', 'mw toolkit': 'mwf toolkit',
+  'mwf research': 'mwf research', 'mw research': 'mwf research',
+  'gms': 'gms project',
+};
+
+function normalizeStr(s) { return (s || '').toLowerCase().trim().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' '); }
 
 function matchProjectByName(name) {
-  const lower = name.toLowerCase().trim();
+  if (!name) return null;
+  const lower = normalizeStr(name);
+  // Exact match
   for (let i = 0; i < state.projects.length; i++) {
-    if (state.projects[i].name.toLowerCase().trim() === lower) return state.projects[i];
+    if (normalizeStr(state.projects[i].name) === lower) return state.projects[i];
   }
-  // Fuzzy: check if project name contains the search or vice versa
+  // Client name match (e.g., "Africa Direct" matches client_name)
   for (let i = 0; i < state.projects.length; i++) {
-    if (state.projects[i].name.toLowerCase().includes(lower) || lower.includes(state.projects[i].name.toLowerCase())) return state.projects[i];
+    const cn = normalizeStr(state.projects[i].client_name || '');
+    if (cn && (cn === lower || lower.includes(cn) || cn.includes(lower))) return state.projects[i];
   }
-  return null;
+  // Alias map lookup
+  const aliasKeys = Object.keys(PROJECT_ALIASES);
+  for (let a = 0; a < aliasKeys.length; a++) {
+    if (lower.includes(aliasKeys[a]) || aliasKeys[a].includes(lower)) {
+      const target = PROJECT_ALIASES[aliasKeys[a]];
+      for (let i = 0; i < state.projects.length; i++) {
+        if (normalizeStr(state.projects[i].name).includes(target)) return state.projects[i];
+      }
+    }
+  }
+  // Partial match: project name contains search or vice versa
+  for (let i = 0; i < state.projects.length; i++) {
+    const pn = normalizeStr(state.projects[i].name);
+    if (pn.includes(lower) || lower.includes(pn)) return state.projects[i];
+  }
+  // Word overlap scoring
+  const words = lower.split(' ').filter(function(w) { return w.length > 2; });
+  let bestScore = 0, bestMatch = null;
+  for (let i = 0; i < state.projects.length; i++) {
+    const pn = normalizeStr(state.projects[i].name);
+    let score = 0;
+    for (let w = 0; w < words.length; w++) {
+      if (pn.includes(words[w])) score++;
+    }
+    if (score > bestScore) { bestScore = score; bestMatch = state.projects[i]; }
+  }
+  return bestScore >= 1 ? bestMatch : null;
 }
 
 function matchMemberByName(name) {
-  const lower = name.toLowerCase().trim();
+  if (!name) return null;
+  const lower = normalizeStr(name);
+  const parts = lower.split(' ').filter(function(p) { return p.length > 0; });
+  // Exact full name match
   for (let i = 0; i < state.teamMembers.length; i++) {
     const m = state.teamMembers[i];
-    if (m.name.toLowerCase().trim() === lower) return m;
+    if (normalizeStr(m.name) === lower) return m;
   }
-  // Match by first name
+  // First name match
   for (let i = 0; i < state.teamMembers.length; i++) {
     const m = state.teamMembers[i];
-    const firstName = m.name.split(' ')[0].toLowerCase();
-    if (firstName === lower || lower === firstName) return m;
+    const mFirst = normalizeStr(m.name).split(' ')[0];
+    if (parts[0] === mFirst) return m;
+  }
+  // Alias resolution: expand nicknames then re-match
+  const expanded = parts.map(function(p) { return MEMBER_ALIASES[p] || p; });
+  for (let i = 0; i < state.teamMembers.length; i++) {
+    const m = state.teamMembers[i];
+    const mParts = normalizeStr(m.name).split(' ');
+    if (expanded[0] === mParts[0]) return m;
+  }
+  // Last name match (if CSV has "Muller" → match "Graham Muller")
+  if (parts.length === 1) {
+    for (let i = 0; i < state.teamMembers.length; i++) {
+      const m = state.teamMembers[i];
+      const mParts = normalizeStr(m.name).split(' ');
+      if (mParts.length > 1 && mParts[mParts.length - 1] === parts[0]) return m;
+    }
   }
   // Partial match
   for (let i = 0; i < state.teamMembers.length; i++) {
     const m = state.teamMembers[i];
-    if (m.name.toLowerCase().includes(lower) || lower.includes(m.name.toLowerCase())) return m;
+    if (normalizeStr(m.name).includes(lower) || lower.includes(normalizeStr(m.name))) return m;
   }
   return null;
 }
 
-function handleHarvestCSV(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const text = e.target.result;
-    const rows = parseCSV(text);
-    if (rows === null) {
-      showToast('Invalid CSV format. Expected columns: Project, Team Member, Hours', 'error');
-      input.value = '';
-      return;
-    }
-    if (rows.length === 0) {
-      showToast('No valid data rows found in CSV', 'warning');
-      input.value = '';
-      return;
-    }
-    // Match rows to projects and members
-    const matched = [];
-    const unmatched = [];
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i];
-      const project = matchProjectByName(r.project);
-      const member = matchMemberByName(r.member);
-      if (project && member) {
-        matched.push({ ...r, projectMatch: project, memberMatch: member });
-      } else {
-        unmatched.push({ ...r, projectMatch: project, memberMatch: member });
+// ==================== CSV PARSER ====================
+function parseCSV(text) {
+  // Strip BOM
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const lines = text.trim().replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  if (lines.length < 2) return [];
+  // Parse header
+  const headerFields = splitCSVLine(lines[0]);
+  const colMap = {};
+  for (let i = 0; i < headerFields.length; i++) {
+    const h = headerFields[i].toLowerCase().trim();
+    // Harvest format columns
+    if (h === 'project' || h === 'project name') colMap.project = i;
+    else if (h === 'client' || h === 'client name') colMap.client = i;
+    else if (h === 'task' || h === 'task name') colMap.task = i;
+    else if (h === 'first name' || h === 'first_name' || h === 'firstname') colMap.firstName = i;
+    else if (h === 'last name' || h === 'last_name' || h === 'lastname' || h === 'surname') colMap.lastName = i;
+    else if (h === 'team member' || h === 'member' || h === 'employee' || h === 'person' || h === 'name' || h === 'full name' || h === 'team_member' || h === 'user') colMap.member = i;
+    else if (h === 'hours' || h === 'total hours' || h === 'actual hours' || h === 'duration' || h === 'time' || h === 'hours worked') colMap.hours = i;
+    else if (h === 'date' || h === 'day' || h === 'work date') colMap.date = i;
+  }
+  // Determine member column: prefer explicit member, fallback to firstName+lastName
+  const hasProjectCol = colMap.project !== undefined || colMap.client !== undefined;
+  const hasMemberCol = colMap.member !== undefined || colMap.firstName !== undefined;
+  const hasHoursCol = colMap.hours !== undefined;
+  if (!hasProjectCol || !hasMemberCol || !hasHoursCol) return null;
+
+  const rawRows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const fields = splitCSVLine(line);
+    // Build project name: prefer "Client - Project" or just "Project"
+    let project = '';
+    if (colMap.project !== undefined) project = (fields[colMap.project] || '').trim();
+    if (colMap.client !== undefined && !project) project = (fields[colMap.client] || '').trim();
+    // Build member name
+    let member = '';
+    if (colMap.member !== undefined) {
+      member = (fields[colMap.member] || '').trim();
+    } else if (colMap.firstName !== undefined) {
+      member = (fields[colMap.firstName] || '').trim();
+      if (colMap.lastName !== undefined) {
+        const ln = (fields[colMap.lastName] || '').trim();
+        if (ln) member += ' ' + ln;
       }
     }
-    showHarvestPreview(matched, unmatched);
-    input.value = '';
-  };
-  reader.readAsText(file);
+    const hours = parseFloat(fields[colMap.hours]) || 0;
+    if (project && member && hours > 0) {
+      rawRows.push({ project: project, member: member, hours: hours });
+    }
+  }
+  // Aggregate: sum hours by project+member (handles daily Harvest rows)
+  const aggMap = {};
+  for (let i = 0; i < rawRows.length; i++) {
+    const r = rawRows[i];
+    const key = r.project.toLowerCase() + '::' + r.member.toLowerCase();
+    if (!aggMap[key]) aggMap[key] = { project: r.project, member: r.member, hours: 0 };
+    aggMap[key].hours += r.hours;
+  }
+  const rows = [];
+  const keys = Object.keys(aggMap);
+  for (let i = 0; i < keys.length; i++) {
+    const r = aggMap[keys[i]];
+    r.hours = Math.round(r.hours * 100) / 100; // round to 2 decimals
+    rows.push(r);
+  }
+  return rows;
 }
 
-function showHarvestPreview(matched, unmatched) {
-  let body = '';
+function splitCSVLine(line) {
+  const fields = [];
+  let current = '';
+  let inQuotes = false;
+  for (let j = 0; j < line.length; j++) {
+    const ch = line[j];
+    if (ch === '"') {
+      if (inQuotes && j + 1 < line.length && line[j + 1] === '"') {
+        current += '"'; j++; // escaped quote
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+    if (ch === ',' && !inQuotes) { fields.push(current.trim()); current = ''; continue; }
+    current += ch;
+  }
+  fields.push(current.trim());
+  return fields;
+}
+
+// ==================== XLSX PARSER ====================
+function parseXLSX(data) {
+  if (typeof XLSX === 'undefined') {
+    showToast('Excel support loading... please try again in a moment', 'warning');
+    return null;
+  }
+  const wb = XLSX.read(data, { type: 'array' });
+  // Try to find an "Actuals" or "Planning" sheet, or use the first data sheet
+  let targetSheet = null;
+  let sheetType = 'unknown';
+  for (let i = 0; i < wb.SheetNames.length; i++) {
+    const sn = wb.SheetNames[i].toLowerCase();
+    if (sn.includes('actual')) { targetSheet = wb.SheetNames[i]; sheetType = 'actuals'; break; }
+    if (sn.includes('planning')) { targetSheet = wb.SheetNames[i]; sheetType = 'planning'; break; }
+  }
+  if (!targetSheet) targetSheet = wb.SheetNames[0];
+
+  const ws = wb.Sheets[targetSheet];
+  const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+  if (!jsonData || jsonData.length < 3) return { rows: [], sheetName: targetSheet };
+
+  // Detect format: Zane's template has "Client / Project" in A3, member names in B1-M1 (row 1)
+  const firstCell = String(jsonData[0][0] || '').toLowerCase();
+  const thirdRow = jsonData[2] || [];
+  const thirdRowFirst = String(thirdRow[0] || '').toLowerCase();
+
+  // Planning template format: row 3 is "Client / Project", columns B+ are member names
+  if (thirdRowFirst.includes('client') || thirdRowFirst.includes('project')) {
+    return parseXLSXCrosstab(jsonData, targetSheet, 2); // header row at index 2
+  }
+  // Check row 1 as header
+  if (firstCell.includes('client') || firstCell.includes('project')) {
+    return parseXLSXCrosstab(jsonData, targetSheet, 0);
+  }
+  // Fallback: try as tabular CSV-like data
+  return parseXLSXTabular(jsonData, targetSheet);
+}
+
+function parseXLSXCrosstab(jsonData, sheetName, headerRowIdx) {
+  // Cross-tab format: first column = project name, remaining columns = team member names
+  const headerRow = jsonData[headerRowIdx];
+  // Find member columns: skip col 0 (project), skip any "TOTAL" or "BUDGET" columns
+  const memberCols = [];
+  for (let c = 1; c < headerRow.length; c++) {
+    const name = String(headerRow[c] || '').trim();
+    if (!name) continue;
+    const lower = name.toLowerCase();
+    if (lower.includes('total') || lower.includes('budget') || lower.includes('variance') || lower.includes('utiliz') || lower.includes('capacity')) continue;
+    memberCols.push({ col: c, name: name });
+  }
+  const rows = [];
+  // Data rows start after header
+  for (let r = headerRowIdx + 1; r < jsonData.length; r++) {
+    const row = jsonData[r];
+    const project = String(row[0] || '').trim();
+    if (!project) continue;
+    const lower = project.toLowerCase();
+    // Skip summary/total rows
+    if (lower.includes('total') || lower.includes('capacity') || lower.includes('variance') || lower.includes('utiliz') || lower.includes('planned leave')) continue;
+    for (let mc = 0; mc < memberCols.length; mc++) {
+      const hours = parseFloat(row[memberCols[mc].col]) || 0;
+      if (hours > 0) {
+        rows.push({ project: project, member: memberCols[mc].name, hours: hours });
+      }
+    }
+  }
+  return { rows: rows, sheetName: sheetName, format: 'crosstab' };
+}
+
+function parseXLSXTabular(jsonData, sheetName) {
+  // Tabular format: try to find columns like CSV
+  const header = jsonData[0];
+  const colMap = {};
+  for (let c = 0; c < header.length; c++) {
+    const h = String(header[c]).toLowerCase().trim();
+    if (h === 'project' || h === 'project name') colMap.project = c;
+    else if (h === 'person' || h === 'member' || h === 'team member' || h === 'name' || h === 'employee') colMap.member = c;
+    else if (h === 'first name' || h === 'firstname') colMap.firstName = c;
+    else if (h === 'last name' || h === 'lastname') colMap.lastName = c;
+    else if (h === 'hours' || h === 'total hours' || h === 'actual hours') colMap.hours = c;
+  }
+  if (colMap.project === undefined || colMap.hours === undefined) return { rows: [], sheetName: sheetName };
+  const rows = [];
+  for (let r = 1; r < jsonData.length; r++) {
+    const row = jsonData[r];
+    const project = String(row[colMap.project] || '').trim();
+    let member = '';
+    if (colMap.member !== undefined) member = String(row[colMap.member] || '').trim();
+    else if (colMap.firstName !== undefined) {
+      member = String(row[colMap.firstName] || '').trim();
+      if (colMap.lastName !== undefined) member += ' ' + String(row[colMap.lastName] || '').trim();
+    }
+    const hours = parseFloat(row[colMap.hours]) || 0;
+    if (project && member && hours > 0) rows.push({ project: project, member: member.trim(), hours: hours });
+  }
+  return { rows: rows, sheetName: sheetName, format: 'tabular' };
+}
+
+// ==================== FILE IMPORT HANDLER ====================
+function handleFileImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+
+  if (ext === 'csv' || ext === 'tsv') {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const text = e.target.result;
+      const rows = parseCSV(text);
+      if (rows === null) {
+        showToast('Could not detect columns. Expected: Project, Team Member/First Name, Hours', 'error');
+        input.value = '';
+        return;
+      }
+      if (rows.length === 0) {
+        showToast('No valid data rows found in file', 'warning');
+        input.value = '';
+        return;
+      }
+      processImportRows(rows, file.name);
+      input.value = '';
+    };
+    reader.readAsText(file);
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const data = new Uint8Array(e.target.result);
+      const result = parseXLSX(data);
+      if (!result || !result.rows || result.rows.length === 0) {
+        showToast('No data found in Excel file. Check the sheet format.', 'warning');
+        input.value = '';
+        return;
+      }
+      showToast('Parsed ' + result.rows.length + ' entries from sheet "' + result.sheetName + '"', 'info');
+      processImportRows(result.rows, file.name);
+      input.value = '';
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    showToast('Unsupported file format. Use .csv or .xlsx', 'error');
+    input.value = '';
+  }
+}
+
+function processImportRows(rows, fileName) {
+  const matched = [];
+  const unmatched = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const project = matchProjectByName(r.project);
+    const member = matchMemberByName(r.member);
+    if (project && member) {
+      // Deduplicate: if same member+project already matched, sum hours
+      let found = false;
+      for (let j = 0; j < matched.length; j++) {
+        if (matched[j].memberMatch.id === member.id && matched[j].projectMatch.id === project.id) {
+          matched[j].hours += r.hours;
+          found = true;
+          break;
+        }
+      }
+      if (!found) matched.push({ project: r.project, member: r.member, hours: r.hours, projectMatch: project, memberMatch: member });
+    } else {
+      unmatched.push({ project: r.project, member: r.member, hours: r.hours, projectMatch: project, memberMatch: member });
+    }
+  }
+  showImportPreview(matched, unmatched, fileName);
+}
+
+function showImportPreview(matched, unmatched, fileName) {
+  let body = '<p class="text-xs text-slate-400 mb-3">Source: ' + esc(fileName) + '</p>';
   if (matched.length > 0) {
     body += '<p class="text-sm font-semibold text-slate-700 mb-2">Matched Records (' + matched.length + ')</p>';
     body += '<div class="max-h-48 overflow-y-auto mb-4 border border-slate-200 rounded-lg">';
     body += '<table class="w-full text-xs">';
-    body += '<thead><tr class="bg-slate-50 border-b border-slate-200"><th class="px-3 py-2 text-left font-semibold text-slate-500">Project</th><th class="px-3 py-2 text-left font-semibold text-slate-500">Member</th><th class="px-3 py-2 text-right font-semibold text-slate-500">Hours</th></tr></thead>';
+    body += '<thead><tr class="bg-slate-50 border-b border-slate-200"><th class="px-3 py-2 text-left font-semibold text-slate-500">CSV Name</th><th class="px-3 py-2 text-left font-semibold text-slate-500">→ Matched To</th><th class="px-3 py-2 text-left font-semibold text-slate-500">Member</th><th class="px-3 py-2 text-right font-semibold text-slate-500">Hours</th></tr></thead>';
     body += '<tbody>';
     for (let i = 0; i < matched.length; i++) {
       const r = matched[i];
-      body += '<tr class="border-b border-slate-50"><td class="px-3 py-1.5 text-slate-700">' + esc(r.projectMatch.name) + '</td><td class="px-3 py-1.5 text-slate-700">' + esc(r.memberMatch.name) + '</td><td class="px-3 py-1.5 text-right font-medium text-slate-900">' + r.hours + 'h</td></tr>';
+      const projChanged = r.project.toLowerCase() !== r.projectMatch.name.toLowerCase();
+      const memChanged = r.member.toLowerCase() !== r.memberMatch.name.toLowerCase();
+      body += '<tr class="border-b border-slate-50">';
+      body += '<td class="px-3 py-1.5 text-slate-400 text-[11px]">' + esc(r.project) + '</td>';
+      body += '<td class="px-3 py-1.5 ' + (projChanged ? 'text-indigo-600 font-medium' : 'text-slate-700') + '">' + esc(r.projectMatch.name) + '</td>';
+      body += '<td class="px-3 py-1.5 ' + (memChanged ? 'text-indigo-600 font-medium' : 'text-slate-700') + '">' + esc(r.memberMatch.name) + '</td>';
+      body += '<td class="px-3 py-1.5 text-right font-medium text-slate-900">' + fmtNum(r.hours) + 'h</td>';
+      body += '</tr>';
     }
     body += '</tbody></table></div>';
   }
   if (unmatched.length > 0) {
-    body += '<p class="text-sm font-semibold text-amber-700 mb-2">Unmatched Records (' + unmatched.length + ') &mdash; will be skipped</p>';
+    body += '<p class="text-sm font-semibold text-amber-700 mb-2">Unmatched Records (' + unmatched.length + ') — will be skipped</p>';
     body += '<div class="max-h-32 overflow-y-auto mb-4 border border-amber-200 rounded-lg bg-amber-50/50">';
     body += '<table class="w-full text-xs">';
     body += '<thead><tr class="bg-amber-50 border-b border-amber-200"><th class="px-3 py-2 text-left font-semibold text-amber-600">Project</th><th class="px-3 py-2 text-left font-semibold text-amber-600">Member</th><th class="px-3 py-2 text-right font-semibold text-amber-600">Hours</th><th class="px-3 py-2 text-left font-semibold text-amber-600">Issue</th></tr></thead>';
@@ -1674,23 +1953,24 @@ function showHarvestPreview(matched, unmatched) {
     for (let i = 0; i < unmatched.length; i++) {
       const r = unmatched[i];
       const issue = !r.projectMatch ? 'Project not found' : 'Member not found';
-      body += '<tr class="border-b border-amber-100"><td class="px-3 py-1.5 text-amber-800">' + esc(r.project) + '</td><td class="px-3 py-1.5 text-amber-800">' + esc(r.member) + '</td><td class="px-3 py-1.5 text-right font-medium text-amber-900">' + r.hours + 'h</td><td class="px-3 py-1.5 text-amber-600 italic">' + issue + '</td></tr>';
+      body += '<tr class="border-b border-amber-100"><td class="px-3 py-1.5 text-amber-800">' + esc(r.project) + '</td><td class="px-3 py-1.5 text-amber-800">' + esc(r.member) + '</td><td class="px-3 py-1.5 text-right font-medium text-amber-900">' + fmtNum(r.hours) + 'h</td><td class="px-3 py-1.5 text-amber-600 italic">' + issue + '</td></tr>';
     }
     body += '</tbody></table></div>';
   }
   if (matched.length === 0) {
     body += '<p class="text-sm text-red-600">No records could be matched to existing projects and team members.</p>';
-    showModal('Harvest Import Preview', body,
+    showModal('Import Preview', body,
       '<button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Close</button>');
     return;
   }
   const totalHours = matched.reduce(function(s, r) { return s + r.hours; }, 0);
-  body += '<p class="text-xs text-slate-500">Total: <strong>' + fmtNum(totalHours) + ' hours</strong> across ' + matched.length + ' allocations for <strong>' + state.actualsMonth + '</strong></p>';
+  body += '<div class="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">';
+  body += '<p class="text-xs text-slate-500">Total: <strong>' + fmtNum(totalHours) + ' hours</strong> across ' + matched.length + ' allocations</p>';
+  body += '<p class="text-xs text-slate-500">Target month: <strong>' + state.actualsMonth + '</strong></p>';
+  body += '</div>';
 
-  // Store matched data globally for the confirm action
   window.__harvestImportData = matched;
-
-  showModal('Harvest Import Preview', body,
+  showModal('Import Preview — ' + matched.length + ' Records', body,
     '<button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancel</button>' +
     '<button onclick="confirmHarvestImport()" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors">Import ' + matched.length + ' Records</button>');
 }
@@ -1745,9 +2025,262 @@ async function confirmHarvestImport() {
   if (errorCount > 0) {
     showToast('Imported ' + successCount + ' records, ' + errorCount + ' failed', 'warning');
   } else {
-    showToast('Successfully imported ' + successCount + ' records from Harvest', 'success');
+    showToast('Successfully imported ' + successCount + ' records', 'success');
   }
   window.__harvestImportData = null;
+  markMutation();
+  await loadAllData(true);
+}
+
+function showImportHelp() {
+  const body = '<div class="space-y-3 text-sm text-slate-600">' +
+    '<p class="font-medium text-slate-800">Supported Import Formats</p>' +
+    '<div class="bg-slate-50 rounded-lg p-3">' +
+    '<p class="font-semibold text-xs text-slate-500 uppercase mb-1">Harvest CSV Export</p>' +
+    '<p class="text-xs">Columns: <code class="bg-slate-200 px-1 rounded">Date, Client, Project, Task, Hours, First Name, Last Name</code></p>' +
+    '<p class="text-xs text-slate-400 mt-1">Daily entries are automatically aggregated by person+project.</p>' +
+    '</div>' +
+    '<div class="bg-slate-50 rounded-lg p-3">' +
+    '<p class="font-semibold text-xs text-slate-500 uppercase mb-1">Generic CSV</p>' +
+    '<p class="text-xs">Columns: <code class="bg-slate-200 px-1 rounded">Project, Team Member, Hours</code></p>' +
+    '</div>' +
+    '<div class="bg-slate-50 rounded-lg p-3">' +
+    '<p class="font-semibold text-xs text-slate-500 uppercase mb-1">Excel Planning Template (.xlsx)</p>' +
+    '<p class="text-xs">Cross-tab format with projects as rows and team members as columns. Auto-detects "Actuals" or "Planning" sheets.</p>' +
+    '</div>' +
+    '<p class="text-xs text-slate-400">Names are fuzzy-matched. Nicknames (Alex→Alexander, Suri→Surietha) and project aliases (EFG→EFG Wealth Connect) are handled automatically.</p>' +
+    '</div>';
+  showModal('Import Help', body,
+    '<button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Close</button>');
+}
+
+// ==================== AI SUGGEST ALLOCATION ====================
+async function suggestAllocation() {
+  const btn = document.getElementById('suggest-btn');
+  if (!btn) return;
+  const origHTML = btn.innerHTML;
+  btn.innerHTML = '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Analyzing...';
+  btn.disabled = true;
+
+  const selectedMonth = state.planningMonth;
+  const members = state.teamMembers;
+  const projects = state.projects;
+
+  // Build utilization data for the month
+  const monthAllocs = [];
+  for (let i = 0; i < state.allocations.length; i++) {
+    if (state.allocations[i].period_month === selectedMonth) monthAllocs.push(state.allocations[i]);
+  }
+
+  const memberData = [];
+  for (let i = 0; i < members.length; i++) {
+    const m = members[i];
+    let totalPlanned = 0;
+    for (let j = 0; j < monthAllocs.length; j++) {
+      if (monthAllocs[j].member_id === m.id) totalPlanned += parseFloat(monthAllocs[j].planned_hours) || 0;
+    }
+    const capacity = parseFloat(m.monthly_capacity) || 160;
+    memberData.push({
+      name: m.name,
+      capacity: capacity,
+      planned: totalPlanned,
+      utilization: capacity > 0 ? (totalPlanned / capacity * 100) : 0,
+    });
+  }
+
+  const projectData = [];
+  for (let i = 0; i < projects.length; i++) {
+    const p = projects[i];
+    let totalPlanned = 0;
+    for (let j = 0; j < monthAllocs.length; j++) {
+      if (monthAllocs[j].project_id === p.id) totalPlanned += parseFloat(monthAllocs[j].planned_hours) || 0;
+    }
+    if (totalPlanned > 0 || p.tier === 'tier1') {
+      projectData.push({
+        name: p.name,
+        tier: p.tier || 'tier3',
+        type: p.project_type || 'external',
+        totalPlanned: totalPlanned,
+      });
+    }
+  }
+
+  try {
+    const resp = await fetch('/api/ai/suggest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ members: memberData, projects: projectData, month: selectedMonth }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(function() { return {}; });
+      throw new Error(err.error || 'AI service unavailable');
+    }
+
+    const data = await resp.json();
+    showSuggestionModal(data, selectedMonth);
+  } catch (e) {
+    showToast(e.message || 'Failed to get AI suggestions', 'error');
+  } finally {
+    btn.innerHTML = origHTML;
+    btn.disabled = false;
+  }
+}
+
+function showSuggestionModal(data, month) {
+  const suggestions = data.suggestions || [];
+  const summary = data.summary || 'No summary available.';
+  const risks = data.risks || [];
+
+  let body = '';
+
+  // Summary section
+  body += '<div class="bg-gradient-to-r from-violet-50 to-indigo-50 rounded-xl p-4 mb-4 border border-violet-100">';
+  body += '<div class="flex items-start gap-3">';
+  body += '<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center flex-shrink-0 mt-0.5">';
+  body += '<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>';
+  body += '</div>';
+  body += '<div>';
+  body += '<p class="text-sm font-semibold text-violet-900 mb-1">AI Analysis — ' + esc(month) + '</p>';
+  body += '<p class="text-xs text-violet-700 leading-relaxed">' + esc(summary) + '</p>';
+  body += '</div></div></div>';
+
+  // Suggestions table
+  if (suggestions.length > 0) {
+    body += '<p class="text-sm font-semibold text-slate-700 mb-2">Suggested Changes (' + suggestions.length + ')</p>';
+    body += '<div class="max-h-64 overflow-y-auto mb-4 border border-slate-200 rounded-lg">';
+    body += '<table class="w-full text-xs">';
+    body += '<thead><tr class="bg-slate-50 border-b border-slate-200">';
+    body += '<th class="px-3 py-2 text-left font-semibold text-slate-500">Member</th>';
+    body += '<th class="px-3 py-2 text-left font-semibold text-slate-500">Project</th>';
+    body += '<th class="px-3 py-2 text-center font-semibold text-slate-500">Action</th>';
+    body += '<th class="px-3 py-2 text-right font-semibold text-slate-500">Hours</th>';
+    body += '<th class="px-3 py-2 text-center font-semibold text-slate-500">Impact</th>';
+    body += '</tr></thead><tbody>';
+
+    for (let i = 0; i < suggestions.length; i++) {
+      const s = suggestions[i];
+      const actionColors = {
+        increase: 'bg-emerald-100 text-emerald-700',
+        decrease: 'bg-amber-100 text-amber-700',
+        remove: 'bg-red-100 text-red-700',
+        add: 'bg-blue-100 text-blue-700',
+      };
+      const impactColors = {
+        high: 'bg-red-100 text-red-700',
+        medium: 'bg-amber-100 text-amber-700',
+        low: 'bg-slate-100 text-slate-600',
+      };
+      const actionClass = actionColors[s.action] || 'bg-slate-100 text-slate-600';
+      const impactClass = impactColors[s.impact] || 'bg-slate-100 text-slate-600';
+      const actionIcon = s.action === 'increase' ? '+' : s.action === 'decrease' ? '-' : s.action === 'add' ? '+' : 'x';
+
+      body += '<tr class="border-b border-slate-50 hover:bg-slate-50/50">';
+      body += '<td class="px-3 py-2 font-medium text-slate-800">' + esc(s.member || '') + '</td>';
+      body += '<td class="px-3 py-2 text-slate-600">' + esc(s.project || '') + '</td>';
+      body += '<td class="px-3 py-2 text-center"><span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ' + actionClass + '">' + actionIcon + ' ' + esc(s.action || '') + '</span></td>';
+      body += '<td class="px-3 py-2 text-right font-semibold text-slate-900">' + (s.hours || 0) + 'h</td>';
+      body += '<td class="px-3 py-2 text-center"><span class="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ' + impactClass + '">' + esc(s.impact || '') + '</span></td>';
+      body += '</tr>';
+      body += '<tr class="border-b border-slate-100"><td colspan="5" class="px-3 py-1.5 text-[11px] text-slate-400 italic">' + esc(s.reason || '') + '</td></tr>';
+    }
+    body += '</tbody></table></div>';
+  }
+
+  // Risks
+  if (risks.length > 0) {
+    body += '<div class="bg-amber-50/50 border border-amber-200 rounded-lg p-3 mb-3">';
+    body += '<p class="text-xs font-semibold text-amber-700 mb-1.5">Risks & Considerations</p>';
+    body += '<ul class="space-y-1">';
+    for (let i = 0; i < risks.length; i++) {
+      body += '<li class="text-xs text-amber-600 flex items-start gap-1.5"><span class="text-amber-400 mt-0.5 flex-shrink-0">&#9679;</span>' + esc(risks[i]) + '</li>';
+    }
+    body += '</ul></div>';
+  }
+
+  body += '<p class="text-[10px] text-slate-400 mt-2">Powered by AI via Kapable Platform. Suggestions are advisory — review before applying.</p>';
+
+  showModal('AI Allocation Suggestions', body,
+    '<button onclick="closeModal()" class="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Dismiss</button>' +
+    '<button onclick="applySuggestions()" class="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 rounded-lg transition-all shadow-sm">Apply All Suggestions</button>');
+
+  // Store suggestions for apply
+  window.__aiSuggestions = suggestions;
+}
+
+async function applySuggestions() {
+  const suggestions = window.__aiSuggestions || [];
+  if (suggestions.length === 0) { closeModal(); return; }
+  closeModal();
+
+  const month = state.planningMonth;
+  let applied = 0, skipped = 0;
+
+  // Build existing allocation map
+  const existingMap = {};
+  for (let i = 0; i < state.allocations.length; i++) {
+    const a = state.allocations[i];
+    if (a.period_month === month) {
+      existingMap[(a.member_name || '').toLowerCase() + '::' + (a.project_name || '').toLowerCase()] = a;
+    }
+  }
+
+  for (let i = 0; i < suggestions.length; i++) {
+    const s = suggestions[i];
+    const member = matchMemberByName(s.member);
+    const project = matchProjectByName(s.project);
+    if (!member || !project) { skipped++; continue; }
+
+    const key = member.name.toLowerCase() + '::' + project.name.toLowerCase();
+    const altKey = (s.member || '').toLowerCase() + '::' + (s.project || '').toLowerCase();
+    const existing = existingMap[key] || existingMap[altKey];
+    // Also check by IDs
+    let existingById = null;
+    for (let j = 0; j < state.allocations.length; j++) {
+      const a = state.allocations[j];
+      if (a.period_month === month && a.member_id === member.id && a.project_id === project.id) {
+        existingById = a; break;
+      }
+    }
+    const alloc = existing || existingById;
+
+    try {
+      if (s.action === 'remove' && alloc) {
+        await api('allocations/' + alloc.id, { method: 'PUT', body: JSON.stringify({ planned_hours: 0 }) });
+        applied++;
+      } else if (s.action === 'increase' && alloc) {
+        const newHours = (parseFloat(alloc.planned_hours) || 0) + (s.hours || 0);
+        await api('allocations/' + alloc.id, { method: 'PUT', body: JSON.stringify({ planned_hours: newHours }) });
+        applied++;
+      } else if (s.action === 'decrease' && alloc) {
+        const newHours = Math.max(0, (parseFloat(alloc.planned_hours) || 0) - (s.hours || 0));
+        await api('allocations/' + alloc.id, { method: 'PUT', body: JSON.stringify({ planned_hours: newHours }) });
+        applied++;
+      } else if (s.action === 'add' && !alloc) {
+        await api('allocations', { method: 'POST', body: JSON.stringify({
+          member_id: member.id, project_id: project.id, period_month: month,
+          planned_hours: s.hours || 0, actual_hours: 0,
+          member_name: member.name, project_name: project.name,
+        })});
+        applied++;
+      } else if (s.action === 'add' && alloc) {
+        const newHours = (parseFloat(alloc.planned_hours) || 0) + (s.hours || 0);
+        await api('allocations/' + alloc.id, { method: 'PUT', body: JSON.stringify({ planned_hours: newHours }) });
+        applied++;
+      } else {
+        skipped++;
+      }
+    } catch (e) {
+      skipped++;
+    }
+  }
+
+  window.__aiSuggestions = null;
+  if (skipped > 0) {
+    showToast('Applied ' + applied + ' suggestions, ' + skipped + ' skipped', 'warning');
+  } else {
+    showToast('Applied ' + applied + ' AI suggestions successfully', 'success');
+  }
   markMutation();
   await loadAllData(true);
 }
